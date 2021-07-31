@@ -120,7 +120,7 @@ class ExperimentBuilder(nn.Module):
         max_probs, targets_u = torch.max(pseudo_label, dim=-1)
         mask = max_probs.ge(self.args.threshold).float().to(self.device)
 
-        Lu = (torch.nn.CrossEntropyLoss()(logits_u_s, targets_u) * mask)
+        Lu = F.cross_entropy(logits_u_s, targets_u, reduction='none')
         
         u_weight = self.meta_model(inputs_u_w)
 
