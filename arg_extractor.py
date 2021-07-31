@@ -21,12 +21,12 @@ def get_args():
     # General Arguments
     parser.add_argument('--experiment_name', nargs="?", type=str, default="exp_1", help='Experiment Name - to be used for building the experiment folder')
     parser.add_argument('--data', type=str, default='CIFAR10', choices=['CIFAR10', 'SVHN'], help='Name of Dataset (CIFAR10 or SVHN)')
-    parser.add_argument('--model_depth', type=int, default=16, help='Wide Resnet Model Depth (default WideResnet-28-2)')
+    parser.add_argument('--model_depth', type=int, default=28, help='Wide Resnet Model Depth (default WideResnet-28-2)')
     parser.add_argument('--model_width', type=int, default=2, help='Wide Resnet Model Width (default WideResnet-28-2)')
     parser.add_argument('--hyper_epochs', type=int, default=1000, help='meta-optimization upper epoch limit')
-    parser.add_argument('--inner_steps', type=int, default=128, help='inner loop per epoch upper steps limit')
+    parser.add_argument('--inner_steps', type=int, default=512, help='inner loop per epoch upper steps limit')
     parser.add_argument('--train_labelled_size', type=int, default=250, metavar='N', help='Number of training labelled samples from the dataset')
-    parser.add_argument('--validation_size', type=int, default=50, metavar='N', help='Number of validation labelled samples from the dataset')
+    parser.add_argument('--validation_size', type=int, default=1000, metavar='N', help='Number of validation labelled samples from the dataset')
     parser.add_argument('--labelled_batch_size', type=int, default=32, metavar='N', help='Batch size for each inner loop epoch')
     parser.add_argument('--mu', type=int, default=7, metavar='N', help='Coefficient of unlabeled batch size')
     parser.add_argument('--num_neumann_terms', type=int, default=3, help='The maximum number of neumann terms to use')
@@ -43,6 +43,7 @@ def get_args():
     parser.add_argument('--progress', action='store_true', default=True, help='Show Progress Bar')
     parser.add_argument('--seed', type=int, default=1, help='random seed')
     parser.add_argument('--use_gpu', action='store_true', default=True, help='Flag to use GPU/CUDA (ENABLED by default)')
+    parser.add_argument('--debugging', action='store_true', default=True, help='If Debugging, Plot Every Epoch on Tensoboard')
                     
     args = parser.parse_args()
     print(args)

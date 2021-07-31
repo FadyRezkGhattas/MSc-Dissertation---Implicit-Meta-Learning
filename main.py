@@ -4,7 +4,6 @@ from arg_extractor import get_args
 from Models.WideResnet import build_wideresnet
 from Models.MLP import MLP
 import os
-from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import  RandomSampler
 from DatasetsUtil.DataLoaderWrap import DataLoaderWrap
 import torch.optim as optim

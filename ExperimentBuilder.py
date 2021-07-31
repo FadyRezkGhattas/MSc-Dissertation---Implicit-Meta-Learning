@@ -6,6 +6,7 @@ from util.experiment_util import AverageMeter, interleave, de_interleave, accura
 import time
 import os
 from tqdm import tqdm
+from torch.utils.tensorboard import SummaryWriter
 
 class ExperimentBuilder(nn.Module):
     def __init__(self, network_model, meta_model, optimizer, scheduler, meta_optimizer, meta_scheduler, args, experiment_name, data_loader : DataLoaderWrap) -> None:
@@ -40,6 +41,7 @@ class ExperimentBuilder(nn.Module):
             print(self.device)
 
         self.experiment_folder = os.path.abspath(self.experiment_name)
+        self.writer = SummaryWriter(self.experiment_folder)
         self.experiment_logs = os.path.abspath(
             os.path.join(self.experiment_folder, "result_outputs"))
         self.experiment_saved_models = os.path.abspath(
@@ -61,6 +63,8 @@ class ExperimentBuilder(nn.Module):
         self.losses_x = AverageMeter()
         self.losses_u = AverageMeter()
         self.mask_probs = AverageMeter()
+        self.test_acc = AverageMeter()
+        self.test_loss = AverageMeter()
 
     def neummann_approximation(self, v, f, w, i=3, alpha=.1):
         """Neumann Series Approximation to the Inverse Hessian.
@@ -124,7 +128,7 @@ class ExperimentBuilder(nn.Module):
         
         u_weight = self.meta_model(inputs_u_w)
 
-        weighted_lu =  u_weight[:,0] * Lu
+        weighted_lu =  u_weight[:,0] * Lu * mask
         weighted_lu = weighted_lu.mean()
 
         loss = Lx + weighted_lu
@@ -132,10 +136,14 @@ class ExperimentBuilder(nn.Module):
         return loss, Lx, weighted_lu, mask
 
     def compute_val_loss(self):
-        self.model.train()
-        inputs, targets = self.data_loader.val_data_x.to(self.device), self.data_loader.val_data_y.to(self.device)
-        logits = self.model(inputs)
-        return torch.nn.CrossEntropyLoss()(logits, targets)
+        loss = []
+        for i in range(20):
+            inputs = self.data_loader.val_data_x[0+(i*50):50+(i*50)].to(self.device)
+            targets = self.data_loader.val_data_y[0+(i*50):50+(i*50)].to(self.device)
+            logits = self.model(inputs)
+            loss.append(torch.nn.CrossEntropyLoss()(logits, targets))
+        
+        return torch.mean(torch.stack(loss))
 
     def train_step(self, pre_train = False):
         loss, Lx, weighted_lu, mask = self.compute_batch_loss()
@@ -178,6 +186,13 @@ class ExperimentBuilder(nn.Module):
                         loss_u=self.losses_u.avg,
                         mask=self.mask_probs.avg))
                     p_bar.update()
+                    if self.args.debugging:
+                        self.writer.add_scalar('pre_train_epoch'+str(epoch)+'/1.train_loss', self.losses.avg, step)
+                        self.writer.add_scalar('pre_train_epoch'+str(epoch)+'/2.train_loss_x', self.losses_x.avg, step)
+                        self.writer.add_scalar('pre_train_epoch'+str(epoch)+'/3.train_loss_u', self.losses_u.avg, step)
+                        self.writer.add_scalar('pre_train_epoch'+str(epoch)+'/4.mask', self.mask_probs.avg, step)
+
+
                 if self.args.progress:
                     p_bar.close()
         print("########################################################################")
@@ -185,15 +200,24 @@ class ExperimentBuilder(nn.Module):
         print("########################################################################")
 
     def test(self):
+        batch_size = 128
+        losses = []
+        prec1 = []
+        prec5 = []
         with torch.no_grad():
-            self.model.eval()
-            inputs = self.data_loader.test_data_x
-            targets = self.data_loader.test_data_y
-            outputs = self.model(inputs)
-            loss = torch.nn.CrossEntropyLoss()(outputs, targets)
+            batches = round(self.data_loader.test_data_x.shape[0]/batch_size)
+            for i in range(batches):
+                self.model.eval()
+                inputs = self.data_loader.test_data_x[0+(i*batch_size):batch_size+(i*batch_size)].to(self.device)
+                targets = self.data_loader.test_data_y[0+(i*batch_size):batch_size+(i*batch_size)].to(self.device)
+                outputs = self.model(inputs)
+                losses.append(torch.nn.CrossEntropyLoss()(outputs, targets))
 
-            prec1, prec5 = accuracy(outputs, targets, topk=(1,5))
-            return loss, prec1, prec5
+                prec1_, prec5_ = accuracy(outputs, targets, topk=(1,5))
+                prec1.append(prec1_)
+                prec5.append(prec5_)
+
+            return torch.mean(torch.stack(losses)), torch.mean(torch.stack(prec1)), torch.mean(torch.stack(prec5))
 
     def meta_update(self):
         train_loss, Lx, weighted_lu, mask = self.compute_batch_loss()
@@ -238,9 +262,32 @@ class ExperimentBuilder(nn.Module):
                         loss_u=self.losses_u.avg,
                         mask=self.mask_probs.avg))
                 p_bar.update()
+                if self.args.debugging:
+                    self.writer.add_scalar('train_epoch'+str(epoch)+'/1.train_loss', self.losses.avg, step)
+                    self.writer.add_scalar('train_epoch'+str(epoch)+'/2.train_loss_x', self.losses_x.avg, step)
+                    self.writer.add_scalar('train_epoch'+str(epoch)+'/3.train_loss_u', self.losses_u.avg, step)
+                    self.writer.add_scalar('train_epoch'+str(epoch)+'/4.mask', self.mask_probs.avg, step)
             if self.args.progress:
                     p_bar.close()
             ####################################
             # Meta-Update
             ####################################
             self.meta_update()
+            ####################################
+            # Test
+            ####################################
+            test_loss, top1_test_acc, top5_test_acc = self.test()
+            
+            self.test_loss.update(test_loss.item())
+            self.test_acc.update(top1_test_acc.item())
+
+            print("test top-1 acc: {:.2f}".format(top1_test_acc))
+            print("test top-5 acc: {:.2f}".format(top5_test_acc))
+            print("test loss: {:.2f}".format(test_loss))
+            self.writer.add_scalar('train/1.train_loss', self.losses.avg, epoch)
+            self.writer.add_scalar('train/2.train_loss_x', self.losses_x.avg, epoch)
+            self.writer.add_scalar('train/3.train_loss_u', self.losses_u.avg, epoch)
+            self.writer.add_scalar('train/4.mask', self.mask_probs.avg, epoch)
+            self.writer.add_scalar('test/1.loss', self.test_loss.avg, epoch)
+            self.writer.add_scalar('test/2.accuracy', self.test_acc.avg, epoch)
+            
