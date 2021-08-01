@@ -20,3 +20,13 @@ data/cifar-10-batches-py/readme.html
 data/cifar-10-batches-py/test_batch
 __pycache__/arg_extractor.cpython-37.pyc
 __pycache__/ExperimentBuilder.cpython-37.pyc
+data/MNISTSSL/processed/test.pt
+data/MNISTSSL/processed/training.pt
+data/MNISTSSL/raw/t10k-images-idx3-ubyte
+data/MNISTSSL/raw/t10k-images-idx3-ubyte.gz
+data/MNISTSSL/raw/t10k-labels-idx1-ubyte
+data/MNISTSSL/raw/t10k-labels-idx1-ubyte.gz
+data/MNISTSSL/raw/train-images-idx3-ubyte
+data/MNISTSSL/raw/train-images-idx3-ubyte.gz
+data/MNISTSSL/raw/train-labels-idx1-ubyte
+data/MNISTSSL/raw/train-labels-idx1-ubyte.gz
