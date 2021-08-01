@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 
 class MLP(nn.Module):
@@ -10,4 +11,5 @@ class MLP(nn.Module):
         )
 
     def forward(self, x):
+        x = torch.flatten(x)
         return self.layers(x)
