@@ -65,6 +65,8 @@ class ExperimentBuilder(nn.Module):
         self.mask_probs = AverageMeter()
         self.test_acc = AverageMeter()
         self.test_loss = AverageMeter()
+        self.validation_acc = AverageMeter()
+        self.validation_loss = AverageMeter()
 
     def neummann_approximation(self, v, f, w, i=3, alpha=.1):
         """Neumann Series Approximation to the Inverse Hessian.
@@ -137,13 +139,19 @@ class ExperimentBuilder(nn.Module):
 
     def compute_val_loss(self):
         loss = []
+        accuracy = []
         for i in range(20):
             inputs = self.data_loader.val_data_x[0+(i*50):50+(i*50)].to(self.device)
             targets = self.data_loader.val_data_y[0+(i*50):50+(i*50)].to(self.device)
             logits = self.model(inputs)
             loss.append(torch.nn.CrossEntropyLoss()(logits, targets))
-        
-        return torch.mean(torch.stack(loss))
+            prec1_, prec5_ = accuracy(logits, targets, topk=(1,5))
+            accuracy.append(prec1_)
+        val_accuracy = torch.mean(torch.stack(accuracy))
+        val_loss = torch.mean(torch.stack(loss))
+        self.validation_loss.update(val_loss.item())
+        self.validation_acc.update(val_accuracy.item())   
+        return val_loss
 
     def train_step(self, pre_train = False):
         loss, Lx, weighted_lu, mask = self.compute_batch_loss()
