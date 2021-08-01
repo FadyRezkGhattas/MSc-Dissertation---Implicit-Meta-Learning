@@ -139,15 +139,15 @@ class ExperimentBuilder(nn.Module):
 
     def compute_val_loss(self):
         loss = []
-        accuracy = []
+        accuracies = []
         for i in range(20):
             inputs = self.data_loader.val_data_x[0+(i*50):50+(i*50)].to(self.device)
             targets = self.data_loader.val_data_y[0+(i*50):50+(i*50)].to(self.device)
             logits = self.model(inputs)
             loss.append(torch.nn.CrossEntropyLoss()(logits, targets))
             prec1_, prec5_ = accuracy(logits, targets, topk=(1,5))
-            accuracy.append(prec1_)
-        val_accuracy = torch.mean(torch.stack(accuracy))
+            accuracies.append(prec1_)
+        val_accuracy = torch.mean(torch.stack(accuracies))
         val_loss = torch.mean(torch.stack(loss))
         self.validation_loss.update(val_loss.item())
         self.validation_acc.update(val_accuracy.item())   
