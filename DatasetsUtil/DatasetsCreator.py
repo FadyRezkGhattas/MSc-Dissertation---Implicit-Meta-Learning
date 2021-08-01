@@ -8,7 +8,6 @@ from .randaugment import RandAugmentMC
 from DatasetsUtil.TransformFixMatch import TransformFixMatch
 from DatasetsUtil.CIFAR10SSL import CIFAR10SSL
 from DatasetsUtil.SVHN_SSL import SVHN_SSL
-from DatasetsUtil.MNISTSSL import MNISTSSL
 
 cifar10_mean = (0.4914, 0.4822, 0.4465)
 cifar10_std = (0.2471, 0.2435, 0.2616)
