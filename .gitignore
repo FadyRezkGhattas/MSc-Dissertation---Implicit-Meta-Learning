@@ -18,3 +18,5 @@ data/cifar-10-batches-py/data_batch_4
 data/cifar-10-batches-py/data_batch_5
 data/cifar-10-batches-py/readme.html
 data/cifar-10-batches-py/test_batch
+__pycache__/arg_extractor.cpython-37.pyc
+__pycache__/ExperimentBuilder.cpython-37.pyc
