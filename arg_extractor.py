@@ -20,7 +20,7 @@ def get_args():
 
     # General Arguments
     parser.add_argument('--experiment_name', nargs="?", type=str, default="exp_1", help='Experiment Name - to be used for building the experiment folder')
-    parser.add_argument('--data', type=str, default='CIFAR10', choices=['CIFAR10', 'SVHN', 'MNIST'], help='Name of Dataset (CIFAR10, MNIST or SVHN)')
+    parser.add_argument('--data', type=str, default='MNIST', choices=['CIFAR10', 'SVHN', 'MNIST'], help='Name of Dataset (CIFAR10, MNIST or SVHN)')
     parser.add_argument('--model_depth', type=int, default=28, help='Wide Resnet Model Depth (default WideResnet-28-2)')
     parser.add_argument('--model_width', type=int, default=2, help='Wide Resnet Model Width (default WideResnet-28-2)')
     parser.add_argument('--hyper_epochs', type=int, default=1000, help='meta-optimization upper epoch limit')

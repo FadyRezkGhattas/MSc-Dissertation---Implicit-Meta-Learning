@@ -10,43 +10,10 @@ from DatasetsUtil.CIFAR10SSL import CIFAR10SSL
 from DatasetsUtil.SVHN_SSL import SVHN_SSL
 from DatasetsUtil.MNISTSSL import MNISTSSL
 
-mnist_mean = (0.5,0.5,0.5)
-mnist_std = (0.5,0.5,0.5)
 cifar10_mean = (0.4914, 0.4822, 0.4465)
 cifar10_std = (0.2471, 0.2435, 0.2616)
 svhn_mean = (0.4377, 0.4438, 0.4728)
 svhn_std = (0.0392, 0.0404, 0.0388)
-
-def get_mnist(args, root="data"):
-    transform_labeled = transforms.Compose([
-        transforms.RandomHorizontalFlip(),
-        transforms.RandomCrop(size=32,
-                              padding=int(32*0.125),
-                              padding_mode='reflect'),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=mnist_mean, std=mnist_std)
-    ])
-    transform_val = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize(mean=mnist_mean, std=mnist_std)
-    ])
-    base_dataset = datasets.CIFAR10(root, train=True, download=True)
-
-    train_labeled_idxs, train_unlabeled_idxs = x_u_split(
-        args, base_dataset.targets, 10)
-
-    train_labeled_dataset = MNISTSSL(
-        root, train_labeled_idxs, train=True,
-        transform=transform_labeled)
-
-    train_unlabeled_dataset = MNISTSSL(
-        root, train_unlabeled_idxs, train=True,
-        transform=TransformFixMatch(mean=mnist_mean, std=mnist_std))
-
-    test_dataset = datasets.CIFAR10(
-        root, train=False, transform=transform_val, download=False)
-
-    return train_labeled_dataset, train_unlabeled_dataset, test_dataset
 
 def get_cifar10(args, root="data"):
     transform_labeled = transforms.Compose([
@@ -131,5 +98,4 @@ def get_svhn(args, root="data"):
     return train_labeled_dataset, train_unlabeled_dataset, test_dataset
 
 DATASET_GETTERS = {'CIFAR10': get_cifar10,
-                   'SVHN': get_svhn,
-                   'MNIST': get_mnist}
+                   'SVHN': get_svhn}
