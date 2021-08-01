@@ -296,6 +296,7 @@ class ExperimentBuilder(nn.Module):
             self.writer.add_scalar('train/2.train_loss_x', self.losses_x.avg, epoch)
             self.writer.add_scalar('train/3.train_loss_u', self.losses_u.avg, epoch)
             self.writer.add_scalar('train/4.mask', self.mask_probs.avg, epoch)
-            self.writer.add_scalar('test/1.loss', self.test_loss.avg, epoch)
-            self.writer.add_scalar('test/2.accuracy', self.test_acc.avg, epoch)
-            
+            self.writer.add_scalar('test/1.test_loss', self.test_loss.avg, epoch)
+            self.writer.add_scalar('test/2.test_accuracy', self.test_acc.avg, epoch)
+            self.writer.add_scalar('test/3.val_loss', self.validation_loss.avg, epoch)
+            self.writer.add_scalar('test/3.val_accuracy', self.validation_acc.avg, epoch)
