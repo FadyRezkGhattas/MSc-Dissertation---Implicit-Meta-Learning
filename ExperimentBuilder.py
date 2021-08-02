@@ -67,6 +67,7 @@ class ExperimentBuilder(nn.Module):
         self.test_loss = AverageMeter()
         self.validation_acc = AverageMeter()
         self.validation_loss = AverageMeter()
+        self.pre_train_confidence_loss = AverageMeter()
 
     def neummann_approximation(self, v, f, w, i=3, alpha=.1):
         """Neumann Series Approximation to the Inverse Hessian.
@@ -166,6 +167,47 @@ class ExperimentBuilder(nn.Module):
         self.losses_u.update(weighted_lu.item())
         self.mask_probs.update(mask.mean().item())
     
+    def pretrain_confidence_network(self):
+        end = time.time()
+        
+        meta_optimizer_pre = torch.optim.SGD(self.meta_model.parameters(), lr=self.args.hyper_lr, momentum=0.9, weight_decay=5e-4)
+
+        for epoch in range(1):
+            if self.args.progress:
+                p_bar = tqdm(range(self.args.pre_train_steps))
+            for step in range(self.args.pre_train_steps):
+                self.data_time.update(time.time() - end)
+                
+                self.meta_model.train()
+                inputs_u_w, inputs_u_s = self.data_loader.get_unlabeled_batch()
+                inputs_x = inputs_u_w.to(self.device)
+                logits = self.meta_model(inputs_x)
+                targets = torch.ones(inputs_u_w.shape[0]).to(self.device)
+                Lx = torch.nn.MSELoss()(logits, targets)
+
+                self.pre_train_confidence_loss.update(Lx.item())
+
+                self.meta_model.zero_grad()
+                Lx.backward()
+                meta_optimizer_pre.step()
+
+                self.batch_time.update(time.time() - end)
+                end=time.time()
+                if self.args.progress:
+                        p_bar.set_description("Train Epoch: {epoch}/{epochs:4}. Iter: {batch:4}/{iter:4}. Data: {data:.3f}s. Batch: {bt:.3f}s. Loss: {loss:.4f}. ".format(
+                        epoch=epoch + 1,
+                        epochs=50,
+                        batch=step + 1,
+                        iter=self.args.pre_train_steps,
+                        data=self.data_time.avg,
+                        bt=self.batch_time.avg,
+                        loss=self.pre_train_confidence_loss.avg))
+                p_bar.update()
+
+                if self.args.debugging:
+                    self.writer.add_scalar('pre_train_confidence_net/1.train_loss', self.pre_train_confidence_loss.avg, step)
+            self.meta_model.eval()
+
     def pre_train(self):
         end = time.time()
         self.model.train()
@@ -228,6 +270,7 @@ class ExperimentBuilder(nn.Module):
             return torch.mean(torch.stack(losses)), torch.mean(torch.stack(prec1)), torch.mean(torch.stack(prec5))
 
     def meta_update(self):
+        self.meta_model.train()
         train_loss, Lx, weighted_lu, mask = self.compute_batch_loss()
         val_loss = self.compute_val_loss()
         
@@ -238,8 +281,10 @@ class ExperimentBuilder(nn.Module):
             p.grad = g
         self.meta_optimizer.step()
         self.meta_scheduler.step()
+        self.meta_model.eval()
 
     def train(self):
+        self.pretrain_confidence_network()
         if self.args.pre_train:
             self.pre_train()
             self.meta_update()
