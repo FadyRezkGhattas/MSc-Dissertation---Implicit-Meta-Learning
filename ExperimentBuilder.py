@@ -63,10 +63,6 @@ class ExperimentBuilder(nn.Module):
         self.losses_x = AverageMeter()
         self.losses_u = AverageMeter()
         self.mask_probs = AverageMeter()
-        self.test_acc = AverageMeter()
-        self.test_loss = AverageMeter()
-        self.validation_acc = AverageMeter()
-        self.validation_loss = AverageMeter()
         self.pre_train_confidence_loss = AverageMeter()
 
     def neummann_approximation(self, v, f, w, i=3, alpha=.1):
@@ -86,6 +82,7 @@ class ExperimentBuilder(nn.Module):
         p = v
 
         grad = torch.autograd.grad(f, w(), grad_outputs=v, retain_graph=True)  # (L^2_t/dwdw)*(dv/dw)
+        
         for j in range(i):
             v = [v_ - alpha * g for v_, g in zip(v, grad)]
             # p += v (Typo in the arxiv version of the paper)
@@ -139,20 +136,17 @@ class ExperimentBuilder(nn.Module):
         return loss, Lx, weighted_lu, mask
 
     def compute_val_loss(self):
-        loss = []
-        accuracies = []
+        validation_loss = AverageMeter()
+        validation_accuracy = AverageMeter()
         for i in range(20):
             inputs = self.data_loader.val_data_x[0+(i*50):50+(i*50)].to(self.device)
             targets = self.data_loader.val_data_y[0+(i*50):50+(i*50)].to(self.device)
             logits = self.model(inputs)
-            loss.append(torch.nn.CrossEntropyLoss()(logits, targets))
+            loss = torch.nn.CrossEntropyLoss()(logits, targets)
+            validation_loss.update(loss.item())
             prec1_, prec5_ = accuracy(logits, targets, topk=(1,5))
-            accuracies.append(prec1_)
-        val_accuracy = torch.mean(torch.stack(accuracies))
-        val_loss = torch.mean(torch.stack(loss))
-        self.validation_loss.update(val_loss.item())
-        self.validation_acc.update(val_accuracy.item())   
-        return val_loss
+            validation_accuracy.append(prec1_.item())
+        return validation_loss.avg, validation_accuracy.avg
 
     def train_step(self, pre_train = False):
         loss, Lx, weighted_lu, mask = self.compute_batch_loss()
@@ -251,9 +245,11 @@ class ExperimentBuilder(nn.Module):
 
     def test(self):
         batch_size = 128
-        losses = []
-        prec1 = []
-        prec5 = []
+        
+        test_acc_1 = AverageMeter()
+        test_acc_5 = AverageMeter()
+        test_loss = AverageMeter()
+        
         with torch.no_grad():
             batches = round(self.data_loader.test_data_x.shape[0]/batch_size)
             for i in range(batches):
@@ -261,18 +257,20 @@ class ExperimentBuilder(nn.Module):
                 inputs = self.data_loader.test_data_x[0+(i*batch_size):batch_size+(i*batch_size)].to(self.device)
                 targets = self.data_loader.test_data_y[0+(i*batch_size):batch_size+(i*batch_size)].to(self.device)
                 outputs = self.model(inputs)
-                losses.append(torch.nn.CrossEntropyLoss()(outputs, targets))
+                loss = torch.nn.CrossEntropyLoss()(outputs, targets)
 
                 prec1_, prec5_ = accuracy(outputs, targets, topk=(1,5))
-                prec1.append(prec1_)
-                prec5.append(prec5_)
+                
+                test_acc_1.update(prec1_.item())
+                test_acc_5.update(prec5_.item())
+                test_loss.update(loss.item())
 
-            return torch.mean(torch.stack(losses)), torch.mean(torch.stack(prec1)), torch.mean(torch.stack(prec5))
+            return test_loss.avg, test_acc_1.avg, test_acc_5.avg
 
     def meta_update(self):
         self.meta_model.train()
         train_loss, Lx, weighted_lu, mask = self.compute_batch_loss()
-        val_loss = self.compute_val_loss()
+        val_loss, val_acc = self.compute_val_loss()
         
         hyper_grads = self.hypergradient(val_loss, train_loss, self.meta_model.parameters, self.model.parameters)
 
@@ -282,6 +280,8 @@ class ExperimentBuilder(nn.Module):
         self.meta_optimizer.step()
         self.meta_scheduler.step()
         self.meta_model.eval()
+
+        return val_loss, val_acc
 
     def train(self):
         self.pretrain_confidence_network()
@@ -325,23 +325,21 @@ class ExperimentBuilder(nn.Module):
             ####################################
             # Meta-Update
             ####################################
-            self.meta_update()
+            val_loss, val_acc = self.meta_update()
             ####################################
             # Test
             ####################################
             test_loss, top1_test_acc, top5_test_acc = self.test()
             
-            self.test_loss.update(test_loss.item())
-            self.test_acc.update(top1_test_acc.item())
-
             print("test top-1 acc: {:.2f}".format(top1_test_acc))
             print("test top-5 acc: {:.2f}".format(top5_test_acc))
             print("test loss: {:.2f}".format(test_loss))
+
             self.writer.add_scalar('train/1.train_loss', self.losses.avg, epoch)
             self.writer.add_scalar('train/2.train_loss_x', self.losses_x.avg, epoch)
             self.writer.add_scalar('train/3.train_loss_u', self.losses_u.avg, epoch)
             self.writer.add_scalar('train/4.mask', self.mask_probs.avg, epoch)
-            self.writer.add_scalar('test/1.test_loss', self.test_loss.avg, epoch)
-            self.writer.add_scalar('test/2.test_accuracy', self.test_acc.avg, epoch)
-            self.writer.add_scalar('test/3.val_loss', self.validation_loss.avg, epoch)
-            self.writer.add_scalar('test/3.val_accuracy', self.validation_acc.avg, epoch)
+            self.writer.add_scalar('test/1.test_loss', test_loss, epoch)
+            self.writer.add_scalar('test/2.test_accuracy', top1_test_acc, epoch)
+            self.writer.add_scalar('test/3.val_loss', val_loss, epoch)
+            self.writer.add_scalar('test/3.val_accuracy', val_acc, epoch)
