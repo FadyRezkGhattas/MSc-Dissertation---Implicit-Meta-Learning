@@ -292,6 +292,15 @@ class ExperimentBuilder(nn.Module):
         end = time.time()
         for epoch in range(self.args.hyper_epochs):
             ####################################
+            # Re-initialize Average Meters
+            ####################################
+            self.batch_time = AverageMeter()
+            self.data_time = AverageMeter()
+            self.losses = AverageMeter()
+            self.losses_x = AverageMeter()
+            self.losses_u = AverageMeter()
+            self.mask_probs = AverageMeter()
+            ####################################
             # Inner Loop Training
             ####################################
             if self.args.progress:
