@@ -36,7 +36,7 @@ def get_args():
     parser.add_argument('--T', default=1, type=float, help='pseudo label temperature')
     parser.add_argument('--wdecay', default=5e-4, type=float, help='weight decay')
     parser.add_argument('--lr', '--learning-rate', default=0.03, type=float, help='Initial Classifier Network Learning Rate')
-    parser.add_argument('--hyper_lr', '--hyper_learning-rate', default=0.03, type=float, help='Confidence Network Learning Rate')
+    parser.add_argument('--hyper_lr', '--hyper_learning-rate', default=1e-3, type=float, help='Confidence Network Learning Rate')
     parser.add_argument('--nesterov', action='store_true', default=True, help='use nesterov momentum')
     parser.add_argument('--warmup', default=0, type=float, help='warmup epochs (unlabeled data based)')
     parser.add_argument('--threshold', default=0.95, type=float, help='pseudo label threshold')
