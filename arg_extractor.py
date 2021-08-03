@@ -31,7 +31,7 @@ def get_args():
     parser.add_argument('--mu', type=int, default=7, metavar='N', help='Coefficient of unlabeled batch size')
     parser.add_argument('--num_neumann_terms', type=int, default=3, help='The maximum number of neumann terms to use')
     parser.add_argument('--pre_train', type=bool, default=True, help='Pre-Train Model before IFT Meta-Learning')
-    parser.add_argument('--pre_train_epochs', type=int, default=5, help='Number of epochs to Pre-Train Model for before IFT Meta-Learning')
+    parser.add_argument('--pre_train_epochs', type=int, default=10, help='Number of epochs to Pre-Train Model for before IFT Meta-Learning')
     parser.add_argument('--pre_train_steps', type=int, default=512, help='Number of steps per epoch to Pre-Train Model for before IFT Meta-Learning')
     parser.add_argument('--T', default=1, type=float, help='pseudo label temperature')
     parser.add_argument('--wdecay', default=5e-4, type=float, help='weight decay')
