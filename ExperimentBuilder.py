@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 import torch.nn as nn
 from DatasetsUtil.DataLoaderWrap import DataLoaderWrap
-from util.experiment_util import AverageMeter, interleave, de_interleave, accuracy
+from util.experiment_util import AverageMeter, interleave, de_interleave, accuracy, save_checkpoint
 import time
 import os
 from tqdm import tqdm
@@ -285,9 +285,28 @@ class ExperimentBuilder(nn.Module):
 
     def train(self):
         self.pretrain_confidence_network()
+        save_checkpoint({
+                'epoch': "0",
+                'model_dict': self.model.state_dict(),
+                'meta_model_dict': self.meta_model.state_dict(),
+                'optimizer': self.optimizer.state_dict(),
+                'meta_optimizer': self.meta_optimizer.state_dict(),
+                'scheduler': self.scheduler.state_dict(),
+                'meta_scheduler': self.meta_scheduler.state_dict()
+            }, self.experiment_saved_models, filename="pretrained_confdence_network.pth.tar")
+
         if self.args.pre_train:
             self.pre_train()
             self.meta_update()
+            save_checkpoint({
+                'epoch': "0",
+                'model_dict': self.model.state_dict(),
+                'meta_model_dict': self.meta_model.state_dict(),
+                'optimizer': self.optimizer.state_dict(),
+                'meta_optimizer': self.meta_optimizer.state_dict(),
+                'scheduler': self.scheduler.state_dict(),
+                'meta_scheduler': self.meta_scheduler.state_dict()
+            }, self.experiment_saved_models, filename="confidence_network_update_post_warmup_training.pth.tar")
         
         end = time.time()
         for epoch in range(self.args.hyper_epochs):
@@ -352,3 +371,14 @@ class ExperimentBuilder(nn.Module):
             self.writer.add_scalar('test/2.test_accuracy', top1_test_acc, epoch)
             self.writer.add_scalar('test/3.val_loss', val_loss, epoch)
             self.writer.add_scalar('test/3.val_accuracy', val_acc, epoch)
+            
+            # Save Checkpoint
+            save_checkpoint({
+                'epoch': epoch + 1,
+                'model_dict': self.model.state_dict(),
+                'meta_model_dict': self.meta_model.state_dict(),
+                'optimizer': self.optimizer.state_dict(),
+                'meta_optimizer': self.meta_optimizer.state_dict(),
+                'scheduler': self.scheduler.state_dict(),
+                'meta_scheduler': self.meta_scheduler.state_dict()
+            }, self.experiment_saved_models, filename="epoch_"+str(epoch+1)+".pth.tar")
