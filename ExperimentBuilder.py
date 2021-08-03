@@ -325,10 +325,10 @@ class ExperimentBuilder(nn.Module):
                         mask=self.mask_probs.avg))
                 p_bar.update()
                 if self.args.debugging:
-                    self.writer.add_scalar('train_epoch'+str(epoch)+'/1.train_loss', self.losses.avg, step)
-                    self.writer.add_scalar('train_epoch'+str(epoch)+'/2.train_loss_x', self.losses_x.avg, step)
-                    self.writer.add_scalar('train_epoch'+str(epoch)+'/3.train_loss_u', self.losses_u.avg, step)
-                    self.writer.add_scalar('train_epoch'+str(epoch)+'/4.mask', self.mask_probs.avg, step)
+                    self.writer.add_scalar('train_epoch'+str(epoch)+'/1.train_loss', self.losses.val, step)
+                    self.writer.add_scalar('train_epoch'+str(epoch)+'/2.train_loss_x', self.losses_x.val, step)
+                    self.writer.add_scalar('train_epoch'+str(epoch)+'/3.train_loss_u', self.losses_u.val, step)
+                    self.writer.add_scalar('train_epoch'+str(epoch)+'/4.mask', self.mask_probs.val, step)
             if self.args.progress:
                     p_bar.close()
             ####################################
