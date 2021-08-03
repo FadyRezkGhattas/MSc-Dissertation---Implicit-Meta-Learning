@@ -1,5 +1,8 @@
 from torch.optim.lr_scheduler import LambdaLR
 import math
+import shutil
+import os
+import torch
 
 def get_cosine_schedule_with_warmup(optimizer,
                                     num_warmup_steps,
@@ -57,3 +60,10 @@ class AverageMeter(object):
         self.sum += val * n
         self.count += n
         self.avg = self.sum / self.count
+
+def save_checkpoint(state, is_best, checkpoint, filename='checkpoint.pth.tar'):
+    filepath = os.path.join(checkpoint, filename)
+    torch.save(state, filepath)
+    if is_best:
+        shutil.copyfile(filepath, os.path.join(checkpoint,
+                                               'model_best.pth.tar'))
