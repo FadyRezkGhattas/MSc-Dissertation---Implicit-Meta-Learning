@@ -58,6 +58,7 @@ class ExperimentBuilder(nn.Module):
         self.losses_u = AverageMeter()
         self.mask_probs = AverageMeter()
         self.pre_train_confidence_loss = AverageMeter()
+        self.losses_u_weighted = AverageMeter()
 
     def neummann_approximation(self, v, f, w, i=3, alpha=.1):
         """Neumann Series Approximation to the Inverse Hessian.
@@ -122,12 +123,13 @@ class ExperimentBuilder(nn.Module):
         
         u_weight = self.meta_model(inputs_u_w)
 
-        weighted_lu =  u_weight[:,0] * Lu * mask
+        masked_lu = Lu * mask
+        weighted_lu =  u_weight[:,0] * masked_lu
         weighted_lu = weighted_lu.mean()
 
         loss = Lx + weighted_lu
 
-        return loss, Lx, weighted_lu, mask
+        return loss, Lx, weighted_lu, masked_lu.mean(), mask.mean()
 
     def compute_val_loss(self):
         losses = []
@@ -142,7 +144,7 @@ class ExperimentBuilder(nn.Module):
         return torch.mean(torch.stack(losses)), validation_accuracy.avg
 
     def train_step(self, pre_train = False):
-        loss, Lx, weighted_lu, mask = self.compute_batch_loss()
+        loss, Lx, weighted_lu, lu, mask = self.compute_batch_loss()
 
         self.model.zero_grad()
         loss.backward()
@@ -151,8 +153,9 @@ class ExperimentBuilder(nn.Module):
 
         self.losses.update(loss.item())
         self.losses_x.update(Lx.item())
-        self.losses_u.update(weighted_lu.item())
-        self.mask_probs.update(mask.mean().item())
+        self.losses_u.update(lu.item())
+        self.losses_u_weighted.update(weighted_lu.item())
+        self.mask_probs.update(mask.item())
     
     def pretrain_confidence_network(self):
         end = time.time()
@@ -311,6 +314,7 @@ class ExperimentBuilder(nn.Module):
             self.losses = AverageMeter()
             self.losses_x = AverageMeter()
             self.losses_u = AverageMeter()
+            self.losses_u_weighted = AverageMeter()
             self.mask_probs = AverageMeter()
             ####################################
             # Inner Loop Training
@@ -363,6 +367,7 @@ class ExperimentBuilder(nn.Module):
             self.writer.add_scalar('train/1.train_loss', self.losses.avg, epoch)
             self.writer.add_scalar('train/2.train_loss_x', self.losses_x.avg, epoch)
             self.writer.add_scalar('train/3.train_loss_u', self.losses_u.avg, epoch)
+            self.writer.add_scalar('train/3.train_loss_u_weighted', self.losses_u_weighted.avg, epoch)
             self.writer.add_scalar('train/4.mask', self.mask_probs.avg, epoch)
             self.writer.add_scalar('test/1.test_loss', test_loss, epoch)
             self.writer.add_scalar('test/2.test_accuracy', top1_test_acc, epoch)
