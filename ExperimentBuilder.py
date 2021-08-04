@@ -348,6 +348,9 @@ class ExperimentBuilder(nn.Module):
             ####################################
             if epoch % self.args.meta_update_freq == 0:
                 val_loss, val_acc = self.meta_update()
+            else:
+                with torch.no_grad():
+                    val_loss, val_acc = self.compute_val_loss()
             ####################################
             # Test
             ####################################
