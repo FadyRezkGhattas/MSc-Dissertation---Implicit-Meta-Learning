@@ -42,20 +42,14 @@ class ExperimentBuilder(nn.Module):
 
         self.experiment_folder = os.path.abspath(self.experiment_name)
         self.writer = SummaryWriter(self.experiment_folder)
-        self.experiment_logs = os.path.abspath(
-            os.path.join(self.experiment_folder, "result_outputs"))
         self.experiment_saved_models = os.path.abspath(
             os.path.join(self.experiment_folder, "saved_models"))
-        self.experiment_plots = os.path.abspath(
-            os.path.join(self.experiment_folder, "plots"))
         # If experiment directory does not exist
         if not os.path.exists(self.experiment_folder):
             os.mkdir(self.experiment_folder)  # create the experiment directory
-            # create the experiment log directory
-            os.mkdir(self.experiment_logs)
+        if not os.path.exists(self.experiment_saved_models):
             # create the experiment saved models directory
             os.mkdir(self.experiment_saved_models)
-            os.mkdir(self.experiment_plots)
 
         self.batch_time = AverageMeter()
         self.data_time = AverageMeter()
