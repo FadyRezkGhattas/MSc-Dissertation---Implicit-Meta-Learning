@@ -130,17 +130,16 @@ class ExperimentBuilder(nn.Module):
         return loss, Lx, weighted_lu, mask
 
     def compute_val_loss(self):
-        validation_loss = AverageMeter()
+        losses = []
         validation_accuracy = AverageMeter()
         for i in range(20):
             inputs = self.data_loader.val_data_x[0+(i*50):50+(i*50)].to(self.device)
             targets = self.data_loader.val_data_y[0+(i*50):50+(i*50)].to(self.device)
             logits = self.model(inputs)
-            loss = torch.nn.CrossEntropyLoss()(logits, targets)
-            validation_loss.update(loss.item())
+            losses.append(torch.nn.CrossEntropyLoss()(logits, targets))
             prec1_, prec5_ = accuracy(logits, targets, topk=(1,5))
-            validation_accuracy.append(prec1_.item())
-        return validation_loss.avg, validation_accuracy.avg
+            validation_accuracy.update(prec1_.item())
+        return torch.mean(torch.stack(losses)), validation_accuracy.avg
 
     def train_step(self, pre_train = False):
         loss, Lx, weighted_lu, mask = self.compute_batch_loss()
