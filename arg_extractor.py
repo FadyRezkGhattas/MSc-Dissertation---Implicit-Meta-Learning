@@ -45,6 +45,7 @@ def get_args():
     parser.add_argument('--seed', type=int, default=1, help='random seed')
     parser.add_argument('--use_gpu', action='store_true', default=True, help='Flag to use GPU/CUDA (ENABLED by default)')
     parser.add_argument('--debugging', action='store_true', default=True, help='If Debugging, Plot Every Epoch on Tensoboard')
+    parser.add_argument('--approx', type=str, default='numn', choices=['numn', 'identity'], help='Inverse Hessian Approximation to Use (numn or identity)')
 
                     
     args = parser.parse_args()

@@ -75,10 +75,9 @@ class ExperimentBuilder(nn.Module):
             (Tuple[torch.Tensor]): Inverse Hessian Approximation by Neumann Series Pre-Multiplied by (v)
         """
         p = v
-
-        grad = torch.autograd.grad(f, w(), grad_outputs=v, retain_graph=True)  # (L^2_t/dwdw)*(dv/dw)
         
         for j in range(i):
+            grad = torch.autograd.grad(f, w(), grad_outputs=v, retain_graph=True)  # (L^2_t/dwdw)*(dv/dw)
             v = [v_ - alpha * g for v_, g in zip(v, grad)]
             # p += v (Typo in the arxiv version of the paper)
             p = [p_ + v_ for p_, v_ in zip(p, v)]
@@ -88,7 +87,10 @@ class ExperimentBuilder(nn.Module):
     def hypergradient(self, validation_loss, training_loss, lambda_, w):
         v1 = torch.autograd.grad(validation_loss, w(), retain_graph=True)
         d_train_d_w = torch.autograd.grad(training_loss, w(), create_graph=True)
-        v2 = self.neummann_approximation(v1, d_train_d_w, w, i=self.args.num_neumann_terms)
+        if self.args.approx == "numn":
+            v2 = self.neummann_approximation(v1, d_train_d_w, w, i=self.args.num_neumann_terms)
+        elif self.args.approx == "identity":
+            v2 = v1
         v3 = torch.autograd.grad(d_train_d_w, lambda_(), grad_outputs=v2, retain_graph=True)
         # d_val_d_lambda = torch.autograd.grad(validation_loss, lambda_())
         #return [d - v for d, v in zip(d_val_d_lambda, v3)]
@@ -367,7 +369,7 @@ class ExperimentBuilder(nn.Module):
             self.writer.add_scalar('train/1.train_loss', self.losses.avg, epoch)
             self.writer.add_scalar('train/2.train_loss_x', self.losses_x.avg, epoch)
             self.writer.add_scalar('train/3.train_loss_u', self.losses_u.avg, epoch)
-            self.writer.add_scalar('train/3.train_loss_u_weighted', self.losses_u_weighted.avg, epoch)
+            self.writer.add_scalar('train/4.train_loss_u_weighted', self.losses_u_weighted.avg, epoch)
             self.writer.add_scalar('train/4.mask', self.mask_probs.avg, epoch)
             self.writer.add_scalar('test/1.test_loss', test_loss, epoch)
             self.writer.add_scalar('test/2.test_accuracy', top1_test_acc, epoch)
