@@ -346,7 +346,8 @@ class ExperimentBuilder(nn.Module):
             ####################################
             # Meta-Update
             ####################################
-            val_loss, val_acc = self.meta_update()
+            if epoch % self.args.meta_update_freq == 0:
+                val_loss, val_acc = self.meta_update()
             ####################################
             # Test
             ####################################
