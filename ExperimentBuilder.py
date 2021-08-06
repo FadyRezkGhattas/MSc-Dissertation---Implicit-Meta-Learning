@@ -266,20 +266,25 @@ class ExperimentBuilder(nn.Module):
             return test_loss.avg, test_acc_1.avg, test_acc_5.avg
 
     def meta_update(self):
-        self.meta_model.train()
-        train_loss, Lx, weighted_lu, lu, mask = self.compute_batch_loss()
-        val_loss, val_acc = self.compute_val_loss()
-        
-        hyper_grads = self.hypergradient(val_loss, train_loss, self.meta_model.parameters, self.model.parameters)
+        if not self.args.freeze_meta:
+            self.meta_model.train()
+            train_loss, Lx, weighted_lu, lu, mask = self.compute_batch_loss()
+            val_loss, val_acc = self.compute_val_loss()
+            
+            hyper_grads = self.hypergradient(val_loss, train_loss, self.meta_model.parameters, self.model.parameters)
 
-        self.meta_optimizer.zero_grad()
-        for p, g in zip(self.meta_model.parameters(), hyper_grads):
-            p.grad = g
-        self.meta_optimizer.step()
-        self.meta_scheduler.step()
-        self.meta_model.eval()
+            self.meta_optimizer.zero_grad()
+            for p, g in zip(self.meta_model.parameters(), hyper_grads):
+                p.grad = g
+            self.meta_optimizer.step()
+            self.meta_scheduler.step()
+            self.meta_model.eval()
 
-        return val_loss, val_acc
+            return val_loss, val_acc
+        else:
+            with torch.no_grad():
+                val_loss, val_acc = self.compute_val_loss()
+            return val_loss, val_acc
 
     def train(self):
         self.pretrain_confidence_network()

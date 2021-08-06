@@ -46,6 +46,7 @@ def get_args():
     parser.add_argument('--use_gpu', action='store_true', default=True, help='Flag to use GPU/CUDA (ENABLED by default)')
     parser.add_argument('--debugging', action='store_true', default=True, help='If Debugging, Plot Every Epoch on Tensoboard')
     parser.add_argument('--approx', type=str, default='numn', choices=['numn', 'identity'], help='Inverse Hessian Approximation to Use (numn or identity)')
+    parser.add_argument('--freeze_meta', type=bool, default=False, help='If True, The Confidence Network is fixed/Freezed (no meta-updates are executed).')
 
                     
     args = parser.parse_args()
