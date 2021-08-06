@@ -48,7 +48,7 @@ def main():
     optimizer = optim.SGD(grouped_parameters, lr=args.lr,
                           momentum=0.9, nesterov=args.nesterov)
 
-    total_steps = (args.hyper_epochs*args.inner_steps)+(args.pre_train_epochs*args.pre_train_steps)
+    total_steps = (args.hyper_epochs*args.inner_steps)+(args.pre_train_epochs*args.pre_train_steps*args.pre_train)
 
     scheduler = get_cosine_schedule_with_warmup(optimizer, args.warmup, total_steps)
 
@@ -75,6 +75,7 @@ def main():
     if args.load_hypernet:
         checkpoint = torch.load(args.checkpoint)
         meta_model.load_state_dict(checkpoint['meta_model_dict'])
+        print("Checkpoint Loaded")
 
     ######################################
     # Start Training
