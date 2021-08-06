@@ -287,16 +287,17 @@ class ExperimentBuilder(nn.Module):
             return val_loss, val_acc
 
     def train(self):
-        self.pretrain_confidence_network()
-        save_checkpoint({
-                'epoch': "0",
-                'model_dict': self.model.state_dict(),
-                'meta_model_dict': self.meta_model.state_dict(),
-                'optimizer': self.optimizer.state_dict(),
-                'meta_optimizer': self.meta_optimizer.state_dict(),
-                'scheduler': self.scheduler.state_dict(),
-                'meta_scheduler': self.meta_scheduler.state_dict()
-            }, self.experiment_saved_models, filename="pretrained_confdence_network.pth.tar")
+        if not self.args.freeze_meta:
+            self.pretrain_confidence_network()
+            save_checkpoint({
+                    'epoch': "0",
+                    'model_dict': self.model.state_dict(),
+                    'meta_model_dict': self.meta_model.state_dict(),
+                    'optimizer': self.optimizer.state_dict(),
+                    'meta_optimizer': self.meta_optimizer.state_dict(),
+                    'scheduler': self.scheduler.state_dict(),
+                    'meta_scheduler': self.meta_scheduler.state_dict()
+                }, self.experiment_saved_models, filename="pretrained_confdence_network.pth.tar")
 
         if self.args.pre_train:
             self.pre_train()
