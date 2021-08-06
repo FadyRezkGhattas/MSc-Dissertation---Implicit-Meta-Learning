@@ -31,7 +31,7 @@ def get_args():
     parser.add_argument('--mu', type=int, default=7, metavar='N', help='Coefficient of unlabeled batch size')
     parser.add_argument('--meta_update_freq', type=int, default=1, metavar='N', help='How many inner epochs before each meta-update')
     parser.add_argument('--num_neumann_terms', type=int, default=3, help='The maximum number of neumann terms to use')
-    parser.add_argument('--pre_train', type=bool, default=True, help='Pre-Train Model before IFT Meta-Learning')
+    parser.add_argument('--pre_train', type=bool, default=False, help='Pre-Train Model before IFT Meta-Learning')
     parser.add_argument('--pre_train_epochs', type=int, default=10, help='Number of epochs to Pre-Train Model for before IFT Meta-Learning')
     parser.add_argument('--pre_train_steps', type=int, default=512, help='Number of steps per epoch to Pre-Train Model for before IFT Meta-Learning')
     parser.add_argument('--T', default=1, type=float, help='pseudo label temperature')
@@ -49,6 +49,7 @@ def get_args():
     parser.add_argument('--freeze_meta', type=bool, default=False, help='If True, The Confidence Network is fixed/Freezed (no meta-updates are executed).')
     parser.add_argument('--checkpoint', default='', type=str, help='File path of the checkpoint to load.')
     parser.add_argument('--load_hypernet', type=bool, default=False, help='If true, the checkpoint is used to load the hypernet.')
+    parser.add_argument('--load_basenet', type=bool, default=False, help='If true, the checkpoint is used to load the hypernet.')
 
                     
     args = parser.parse_args()
