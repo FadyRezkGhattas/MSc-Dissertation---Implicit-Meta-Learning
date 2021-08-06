@@ -363,23 +363,15 @@ class ExperimentBuilder(nn.Module):
                 with torch.no_grad():
                     val_loss, val_acc = self.compute_val_loss()
             ####################################
-            # Test
+            # Summary Writer
             ####################################
-            test_loss, top1_test_acc, top5_test_acc = self.test()
-            
-            print("test top-1 acc: {:.2f}".format(top1_test_acc))
-            print("test top-5 acc: {:.2f}".format(top5_test_acc))
-            print("test loss: {:.2f}".format(test_loss))
-
             self.writer.add_scalar('train/1.train_loss', self.losses.avg, epoch)
             self.writer.add_scalar('train/2.train_loss_x', self.losses_x.avg, epoch)
             self.writer.add_scalar('train/3.train_loss_u', self.losses_u.avg, epoch)
             self.writer.add_scalar('train/4.train_loss_u_weighted', self.losses_u_weighted.avg, epoch)
             self.writer.add_scalar('train/4.mask', self.mask_probs.avg, epoch)
-            self.writer.add_scalar('test/1.test_loss', test_loss, epoch)
-            self.writer.add_scalar('test/2.test_accuracy', top1_test_acc, epoch)
-            self.writer.add_scalar('test/3.val_loss', val_loss, epoch)
-            self.writer.add_scalar('test/3.val_accuracy', val_acc, epoch)
+            self.writer.add_scalar('test/1.val_loss', val_loss, epoch)
+            self.writer.add_scalar('test/2.val_accuracy', val_acc, epoch)
             
             # Save Checkpoint
             save_checkpoint({
@@ -391,3 +383,13 @@ class ExperimentBuilder(nn.Module):
                 'scheduler': self.scheduler.state_dict(),
                 'meta_scheduler': self.meta_scheduler.state_dict()
             }, self.experiment_saved_models, filename="epoch_"+str(epoch+1)+".pth.tar")
+        
+        ##################################
+        # Test
+        ##################################
+        test_loss, top1_test_acc, top5_test_acc = self.test()
+        print("test top-1 acc: {:.2f}".format(top1_test_acc))
+        print("test top-5 acc: {:.2f}".format(top5_test_acc))
+        print("test loss: {:.2f}".format(test_loss))
+        self.writer.add_scalar('test/3.test_loss', test_loss, epoch)
+        self.writer.add_scalar('test/4.test_accuracy', top1_test_acc, epoch)
