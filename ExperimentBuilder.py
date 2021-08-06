@@ -267,7 +267,7 @@ class ExperimentBuilder(nn.Module):
 
     def meta_update(self):
         self.meta_model.train()
-        train_loss, Lx, weighted_lu, mask = self.compute_batch_loss()
+        train_loss, Lx, weighted_lu, lu, mask = self.compute_batch_loss()
         val_loss, val_acc = self.compute_val_loss()
         
         hyper_grads = self.hypergradient(val_loss, train_loss, self.meta_model.parameters, self.model.parameters)
