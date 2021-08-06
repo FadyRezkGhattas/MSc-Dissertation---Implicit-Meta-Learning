@@ -47,6 +47,8 @@ def get_args():
     parser.add_argument('--debugging', action='store_true', default=True, help='If Debugging, Plot Every Epoch on Tensoboard')
     parser.add_argument('--approx', type=str, default='numn', choices=['numn', 'identity'], help='Inverse Hessian Approximation to Use (numn or identity)')
     parser.add_argument('--freeze_meta', type=bool, default=False, help='If True, The Confidence Network is fixed/Freezed (no meta-updates are executed).')
+    parser.add_argument('--checkpoint', default='', type=str, help='File path of the checkpoint to load.')
+    parser.add_argument('--load_hypernet', type=bool, default=False, help='If true, the checkpoint is used to load the hypernet.')
 
                     
     args = parser.parse_args()

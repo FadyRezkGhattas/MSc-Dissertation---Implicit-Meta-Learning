@@ -69,6 +69,13 @@ def main():
     model.zero_grad()
     meta_model.zero_grad()
 
+    #############################################
+    # Load Confidence Network Checkpoint
+    #############################################
+    if args.load_hypernet:
+        checkpoint = torch.load(args.checkpoint)
+        meta_model.load_state_dict(checkpoint['meta_model_dict'])
+
     ######################################
     # Start Training
     ######################################
