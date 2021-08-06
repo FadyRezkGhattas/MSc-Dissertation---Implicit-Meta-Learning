@@ -103,7 +103,7 @@ class ExperimentBuilder(nn.Module):
 
         batch_size = inputs_x.shape[0]
 
-        inputs_u_w, inputs_u_s = self.data_loader.get_unlabeled_batch()
+        inputs_u, inputs_u_w, inputs_u_s = self.data_loader.get_unlabeled_batch()
         inputs_u_w, inputs_u_s = inputs_u_w.to(self.device), inputs_u_s.to(self.device)
         inputs = interleave(
             torch.cat((inputs_x, inputs_u_w, inputs_u_s)), 2*self.args.mu+1)
@@ -171,7 +171,7 @@ class ExperimentBuilder(nn.Module):
                 self.data_time.update(time.time() - end)
                 
                 self.meta_model.train()
-                inputs_u_w, inputs_u_s = self.data_loader.get_unlabeled_batch()
+                inputs_u, inputs_u_w, inputs_u_s = self.data_loader.get_unlabeled_batch()
                 inputs_x = inputs_u_w.to(self.device)
                 logits = self.meta_model(inputs_x)
                 targets = torch.ones(inputs_u_w.shape[0]).to(self.device)

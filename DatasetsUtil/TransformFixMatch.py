@@ -21,4 +21,5 @@ class TransformFixMatch(object):
     def __call__(self, x):
         weak = self.weak(x)
         strong = self.strong(x)
-        return self.normalize(weak), self.normalize(strong)
+        x = transforms.ToTensor()(x)
+        return x, self.normalize(weak), self.normalize(strong)
