@@ -392,4 +392,5 @@ class ExperimentBuilder(nn.Module):
         print("test top-5 acc: {:.2f}".format(top5_test_acc))
         print("test loss: {:.2f}".format(test_loss))
         self.writer.add_scalar('test/3.test_loss', test_loss, epoch)
-        self.writer.add_scalar('test/4.test_accuracy', top1_test_acc, epoch)
+        self.writer.add_scalar('test/4.test_top1_accuracy', top1_test_acc, epoch)
+        self.writer.add_scalar('test/5.test_top5_accuracy', top5_test_acc, epoch)
