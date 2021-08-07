@@ -287,7 +287,7 @@ class ExperimentBuilder(nn.Module):
             return val_loss, val_acc
 
     def train(self):
-        if not self.args.freeze_meta or not self.args.load_hypernet:
+        if not self.args.freeze_meta and not self.args.load_hypernet:
             self.pretrain_confidence_network()
             save_checkpoint({
                     'epoch': "0",
