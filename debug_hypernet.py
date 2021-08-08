@@ -66,7 +66,7 @@ if __name__ == '__main__':
     parser.add_argument('--validation_size', type=int, default=1000, metavar='N', help='Number of validation labelled samples from the dataset')
     parser.add_argument('--labelled_batch_size', type=int, default=64, metavar='N', help='Batch size for each inner loop epoch')
     parser.add_argument('--mu', type=int, default=7, metavar='N', help='Coefficient of unlabeled batch size')
-    parser.add_argument('--start_epoch', type=int, default=0, metavar='N', help='Epoch checkpoint to start evaluating at')
+    parser.add_argument('--start_epoch', type=int, default=1, metavar='N', help='Epoch checkpoint to start evaluating at')
     parser.add_argument('--end_epoch', type=int, default=100, metavar='N', help='Final Epoch checkpoint to stop evaluating at')
 
 
@@ -75,7 +75,7 @@ if __name__ == '__main__':
 
     progress = tqdm(range(args.start_epoch, args.end_epoch))
 
-    for i in range(100):
+    for i in range(args.start_epoch, args.end_epoch):
         args.checkpoint_name= "epoch_"+str(i)+".pth.tar"
         mean, std = main(args)
         results['means'].append(mean)
