@@ -76,7 +76,7 @@ if __name__ == '__main__':
     progress = tqdm(range(args.start_epoch, args.end_epoch))
 
     for i in range(100):
-        args.checkpoint_name= "epoch_85"+str(i)+".pth.tar"
+        args.checkpoint_name= "epoch_"+str(i)+".pth.tar"
         mean, std = main(args)
         results['means'].append(mean)
         results['stds'].append(std)
