@@ -5,6 +5,7 @@ import os
 from DatasetsUtil.DataLoaderWrap import DataLoaderWrap
 from torch.utils.data import  RandomSampler
 import csv
+from tqdm import tqdm
 
 def save_statistics(experiment_log_dir, filename, stats_dict, current_epoch, continue_from_mode = False, save_full_dict=False):
     """
@@ -65,15 +66,20 @@ if __name__ == '__main__':
     parser.add_argument('--validation_size', type=int, default=1000, metavar='N', help='Number of validation labelled samples from the dataset')
     parser.add_argument('--labelled_batch_size', type=int, default=64, metavar='N', help='Batch size for each inner loop epoch')
     parser.add_argument('--mu', type=int, default=7, metavar='N', help='Coefficient of unlabeled batch size')
+    parser.add_argument('--start_epoch', type=int, default=0, metavar='N', help='Epoch checkpoint to start evaluating at')
+    parser.add_argument('--end_epoch', type=int, default=100, metavar='N', help='Final Epoch checkpoint to stop evaluating at')
 
 
     args = parser.parse_args()
     results = {'means':[],'stds':[]}
+
+    progress = tqdm(range(args.start_epoch, args.end_epoch))
 
     for i in range(100):
         args.checkpoint_name= "epoch_85"+str(i)+".pth.tar"
         mean, std = main(args)
         results['means'].append(mean)
         results['stds'].append(std)
+        progress.update()
         
     save_statistics(args.dir, "MWN_Outputs.csv", results, 0, False, True)
