@@ -36,7 +36,7 @@ def save_statistics(experiment_log_dir, filename, stats_dict, current_epoch, con
 
     return summary_filename
 
-def main(args):
+def main(args, data_loader):
     meta_model = build_wideresnet(depth=28,
                              widen_factor=2,
                              dropout=0,
@@ -46,8 +46,6 @@ def main(args):
     checkpoint = torch.load(os.path.join(saved_models, args.checkpoint_name))
 
     meta_model.load_state_dict(checkpoint['meta_model_dict'])
-
-    data_loader = DataLoaderWrap(args, RandomSampler, 0, 0)
 
     targets = []
     with torch.no_grad():
@@ -68,18 +66,33 @@ if __name__ == '__main__':
     parser.add_argument('--mu', type=int, default=7, metavar='N', help='Coefficient of unlabeled batch size')
     parser.add_argument('--start_epoch', type=int, default=1, metavar='N', help='Epoch checkpoint to start evaluating at')
     parser.add_argument('--end_epoch', type=int, default=100, metavar='N', help='Final Epoch checkpoint to stop evaluating at')
+    parser.add_argument('--warmup', type=bool, default=False, metavar='N', help='If True, includes initial confidence network vals after warm-up and pre-training')
 
 
     args = parser.parse_args()
-    results = {'means':[],'stds':[]}
+
+    data_loader = DataLoaderWrap(args, RandomSampler, 0, 0)
 
     progress = tqdm(range(args.start_epoch, args.end_epoch))
+    results = {'means':[],'stds':[]}
+
+    if args.warmup:
+        print("Including Warmup and Pre-Trained Update of Confidence Network")
+        args.checkpoint_name= "confidence_network_update_post_warmup_training.pth.tar"
+        mean, std = main(args, data_loader)
+        results['means'].append(mean.item())
+        results['stds'].append(std.item())
+
+        args.checkpoint_name= "pretrained_confdence_network.pth.tar"
+        mean, std = main(args, data_loader)
+        results['means'].append(mean.item())
+        results['stds'].append(std.item())
 
     for i in range(args.start_epoch, args.end_epoch):
         args.checkpoint_name= "epoch_"+str(i)+".pth.tar"
-        mean, std = main(args)
-        results['means'].append(mean)
-        results['stds'].append(std)
+        mean, std = main(args, data_loader)
+        results['means'].append(mean.item())
+        results['stds'].append(std.item())
         progress.update()
         
-    save_statistics(args.dir, "MWN_Outputs.csv", results, 0, False, True)
+    save_statistics(args.dir, "MWN_Outputs_pre.csv", results, 0, False, True)
