@@ -95,4 +95,4 @@ if __name__ == '__main__':
         results['stds'].append(std.item())
         progress.update()
         
-    save_statistics(args.dir, "MWN_Outputs_pre.csv", results, 0, False, True)
+    save_statistics(args.dir, "MWN_Outputs.csv", results, 0, False, True)
