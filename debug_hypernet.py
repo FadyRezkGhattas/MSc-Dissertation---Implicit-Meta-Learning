@@ -37,6 +37,7 @@ def save_statistics(experiment_log_dir, filename, stats_dict, current_epoch, con
     return summary_filename
 
 def main(args, data_loader):
+    device = torch.cuda.current_device()
     meta_model = build_wideresnet(depth=28,
                              widen_factor=2,
                              dropout=0,
@@ -46,14 +47,19 @@ def main(args, data_loader):
     checkpoint = torch.load(os.path.join(saved_models, args.checkpoint_name))
 
     meta_model.load_state_dict(checkpoint['meta_model_dict'])
+    meta_model = meta_model.to(device)
 
-    targets = []
+    targets_x = []
+    targets_xs = []
+    targets_xw = []
     with torch.no_grad():
         for i in range (5):
-            x, x_u, x_w = data_loader.get_unlabeled_batch()
-            targets += meta_model(x_u)
+            x, x_w, x_s = data_loader.get_unlabeled_batch()
+            targets_xw += meta_model(x_w)
+            targets_xs += meta_model(x_s)
+            targets_x  += meta_model(x)
             
-    return torch.mean(torch.stack(targets)), torch.std(torch.stack(targets))
+    return torch.mean(torch.stack(targets_x)), torch.std(torch.stack(targets_x)), torch.mean(torch.stack(targets_xw)), torch.std(torch.stack(targets_xw)), torch.mean(torch.stack(targets_xs)), torch.std(torch.stack(targets_xs))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='PyTorch FixMatch Training')
@@ -74,25 +80,40 @@ if __name__ == '__main__':
     data_loader = DataLoaderWrap(args, RandomSampler, 0, 0)
 
     progress = tqdm(range(args.start_epoch, args.end_epoch))
-    results = {'means':[],'stds':[]}
+    results = {'means_x':[],'stds_x':[],
+                'means_xs':[],'stds_xs':[],
+                'means_xw':[],'stds_xw':[]
+    }
 
     if args.warmup:
         print("Including Warmup and Pre-Trained Update of Confidence Network")
         args.checkpoint_name= "confidence_network_update_post_warmup_training.pth.tar"
-        mean, std = main(args, data_loader)
-        results['means'].append(mean.item())
-        results['stds'].append(std.item())
+        mean_x, std_x, mean_xw, std_xw, mean_xs, std_xs = main(args, data_loader)
+        results['means_x'].append(mean_x.item())
+        results['stds_x'].append(std_x.item())
+        results['means_xw'].append(mean_xw.item())
+        results['stds_w'].append(std_xw.item())
+        results['means_xs'].append(mean_xs.item())
+        results['stds_xs'].append(std_xs.item())
 
         args.checkpoint_name= "pretrained_confdence_network.pth.tar"
         mean, std = main(args, data_loader)
-        results['means'].append(mean.item())
-        results['stds'].append(std.item())
+        results['means_x'].append(mean_x.item())
+        results['stds_x'].append(std_x.item())
+        results['means_xw'].append(mean_xw.item())
+        results['stds_w'].append(std_xw.item())
+        results['means_xs'].append(mean_xs.item())
+        results['stds_xs'].append(std_xs.item())
 
     for i in range(args.start_epoch, args.end_epoch):
         args.checkpoint_name= "epoch_"+str(i)+".pth.tar"
-        mean, std = main(args, data_loader)
-        results['means'].append(mean.item())
-        results['stds'].append(std.item())
+        mean_x, std_x, mean_xw, std_xw, mean_xs, std_xs = main(args, data_loader)
+        results['means_x'].append(mean_x.item())
+        results['stds_x'].append(std_x.item())
+        results['means_xw'].append(mean_xw.item())
+        results['stds_w'].append(std_xw.item())
+        results['means_xs'].append(mean_xs.item())
+        results['stds_xs'].append(std_xs.item())
         progress.update()
         
     save_statistics(args.dir, "MWN_Outputs.csv", results, 0, False, True)
