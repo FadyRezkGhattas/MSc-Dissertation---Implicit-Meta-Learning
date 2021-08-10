@@ -59,6 +59,8 @@ class ExperimentBuilder(nn.Module):
         self.mask_probs = AverageMeter()
         self.pre_train_confidence_loss = AverageMeter()
         self.losses_u_weighted = AverageMeter()
+        self.confidence_net_weights = []
+        self.confidence_net_stds = []
 
     def neummann_approximation(self, v, f, w, i=3, alpha=.1):
         """Neumann Series Approximation to the Inverse Hessian.
@@ -131,7 +133,7 @@ class ExperimentBuilder(nn.Module):
 
         loss = Lx + weighted_lu
 
-        return loss, Lx, weighted_lu, masked_lu.mean(), mask.mean()
+        return loss, Lx, weighted_lu, masked_lu.mean(), mask.mean(), u_weight.mean(), u_weight.std()
 
     def compute_val_loss(self):
         losses = []
@@ -146,7 +148,10 @@ class ExperimentBuilder(nn.Module):
         return torch.mean(torch.stack(losses)), validation_accuracy.avg
 
     def train_step(self, pre_train = False):
-        loss, Lx, weighted_lu, lu, mask = self.compute_batch_loss()
+        loss, Lx, weighted_lu, lu, mask, mwn_outputs_avg, mwn_outputs_std = self.compute_batch_loss()
+
+        self.confidence_net_weights.append(mwn_outputs_avg.item())
+        self.confidence_net_stds.append(mwn_outputs_std.item())
 
         self.model.zero_grad()
         loss.backward()
@@ -268,7 +273,7 @@ class ExperimentBuilder(nn.Module):
     def meta_update(self):
         if not self.args.freeze_meta:
             self.meta_model.train()
-            train_loss, Lx, weighted_lu, lu, mask = self.compute_batch_loss()
+            train_loss, Lx, weighted_lu, lu, mask, mwn_outputs_avg, mwn_outputs_std = self.compute_batch_loss()
             val_loss, val_acc = self.compute_val_loss()
             
             hyper_grads = self.hypergradient(val_loss, train_loss, self.meta_model.parameters, self.model.parameters)
@@ -352,7 +357,10 @@ class ExperimentBuilder(nn.Module):
                     self.writer.add_scalar('train_epoch'+str(epoch)+'/1.train_loss', self.losses.val, step)
                     self.writer.add_scalar('train_epoch'+str(epoch)+'/2.train_loss_x', self.losses_x.val, step)
                     self.writer.add_scalar('train_epoch'+str(epoch)+'/3.train_loss_u', self.losses_u.val, step)
-                    self.writer.add_scalar('train_epoch'+str(epoch)+'/4.mask', self.mask_probs.val, step)
+                    self.writer.add_scalar('train_epoch'+str(epoch)+'/4.train_loss_u_weighted', self.losses_u_weighted.val, step)
+                    self.writer.add_scalar('train_epoch'+str(epoch)+'/5.mask', self.mask_probs.val, step)
+                    self.writer.add_scalar('train_epoch'+str(epoch)+'/6.MWN_Outputs_Avg', self.confidence_net_weights[-1], step)
+                    self.writer.add_scalar('train_epoch'+str(epoch)+'/7.MWN_Outputs_Std', self.confidence_net_stds[-1], step)
             if self.args.progress:
                     p_bar.close()
             ####################################
