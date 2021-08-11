@@ -55,9 +55,9 @@ def main(args, data_loader):
     with torch.no_grad():
         for i in range (5):
             x, x_w, x_s = data_loader.get_unlabeled_batch()
-            targets_xw += meta_model(x_w)
-            targets_xs += meta_model(x_s)
-            targets_x  += meta_model(x)
+            targets_xw += meta_model(x_w.to(device))
+            targets_xs += meta_model(x_s.to(device))
+            targets_x  += meta_model(x.to(device))
             
     return torch.mean(torch.stack(targets_x)), torch.std(torch.stack(targets_x)), torch.mean(torch.stack(targets_xw)), torch.std(torch.stack(targets_xw)), torch.mean(torch.stack(targets_xs)), torch.std(torch.stack(targets_xs))
 
