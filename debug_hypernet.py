@@ -111,7 +111,7 @@ if __name__ == '__main__':
         results['means_x'].append(mean_x.item())
         results['stds_x'].append(std_x.item())
         results['means_xw'].append(mean_xw.item())
-        results['stds_w'].append(std_xw.item())
+        results['stds_xw'].append(std_xw.item())
         results['means_xs'].append(mean_xs.item())
         results['stds_xs'].append(std_xs.item())
         progress.update()
