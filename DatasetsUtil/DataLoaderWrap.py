@@ -7,7 +7,8 @@ class DataLoaderWrap():
 
         self.args = args
 
-        labeled_dataset, unlabeled_dataset, test_dataset = DATASET_GETTERS[args.data](args)
+        labeled_dataset, unlabeled_dataset, validation_dataset, test_dataset = DATASET_GETTERS[args.data](args)
+
         self.labeled_trainloader = DataLoader(
             labeled_dataset,
             sampler=train_sampler(labeled_dataset),
@@ -18,6 +19,12 @@ class DataLoaderWrap():
             unlabeled_dataset,
             sampler=train_sampler(unlabeled_dataset),
             batch_size=args.labelled_batch_size*args.mu,
+            drop_last=True)
+
+        self.validation_trainloader = DataLoader(
+            validation_dataset,
+            sampler=train_sampler(validation_dataset),
+            batch_size=args.validation_size,
             drop_last=True)
 
         self.labeled_epoch = labeled_epoch
@@ -32,12 +39,12 @@ class DataLoaderWrap():
         self.unlabeled_iter = iter(self.unlabeled_trainloader)
         
         test_data_full = next(iter(test_loader))
+        self.test_data_x = test_data_full[0]
+        self.test_data_y = test_data_full[1]
 
-        self.val_data_x = test_data_full[0][0:args.validation_size]
-        self.val_data_y = test_data_full[1][0:args.validation_size]
-
-        self.test_data_x = test_data_full[0][args.validation_size:]
-        self.test_data_y = test_data_full[1][args.validation_size:]
+        validation_data_full = next(iter(self.validation_trainloader))
+        self.val_data_x = validation_data_full[0]
+        self.val_data_y = validation_data_full[1]
     
     def get_labelled_batch(self):
         try:
