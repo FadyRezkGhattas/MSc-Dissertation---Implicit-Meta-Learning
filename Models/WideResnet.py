@@ -78,6 +78,7 @@ class WideResNet(nn.Module):
         assert((depth - 4) % 6 == 0)
         n = (depth - 4) / 6
         block = BasicBlock
+        self.feature_extractor = feature_extractor
         # 1st conv before any network block
         self.conv1 = nn.Conv2d(3, channels[0], kernel_size=3, stride=1,
                                padding=1, bias=False)
@@ -95,7 +96,7 @@ class WideResNet(nn.Module):
         self.relu = nn.LeakyReLU(negative_slope=0.1, inplace=True)
         self.pool = nn.AdaptiveAvgPool2d(1)
         self.channels = channels[3]
-        if not feature_extractor:
+        if not self.feature_extractor:
             self.fc = nn.Linear(channels[3], num_classes)
 
         for m in self.modules():
@@ -118,7 +119,8 @@ class WideResNet(nn.Module):
         out = self.relu(self.bn1(out))
         out = self.pool(out)
         out = out.view(-1, self.channels)
-        out = self.fc(out)
+        if not self.feature_extractor:
+            out = self.fc(out)
         return out
 
 
