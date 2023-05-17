@@ -9,13 +9,14 @@ from tqdm import tqdm
 from torch.utils.tensorboard import SummaryWriter
 
 class ExperimentBuilder(nn.Module):
-    def __init__(self, network_model, meta_model, optimizer, scheduler, meta_optimizer, meta_scheduler, args, experiment_name, data_loader : DataLoaderWrap) -> None:
+    def __init__(self, backbone, classifier_net, confidence_net, optimizer, scheduler, meta_optimizer, meta_scheduler, args, experiment_name, data_loader : DataLoaderWrap) -> None:
         super(ExperimentBuilder, self).__init__()
         self.experiment_name = experiment_name
-        self.model = network_model
+        self.backbone = backbone
+        self.classifer_net = classifier_net
+        self.confidence_net = confidence_net
         self.data_loader = data_loader
         self.args = args
-        self.meta_model = meta_model
         self.optimizer = optimizer
         self.scheduler = scheduler
         self.meta_optimizer = meta_optimizer
@@ -23,17 +24,17 @@ class ExperimentBuilder(nn.Module):
 
         if torch.cuda.device_count() > 1 and args.use_gpu:
             self.device = torch.cuda.current_device()
-            self.model.to(self.device)
-            self.meta_model.to(self.device)
-            self.model = nn.DataParallel(module=self.model)
-            self.meta_model = nn.DataParallel(module=self.meta_model)
+            self.backbone.to(self.device)
+            self.confidence_net.to(self.device)
+            self.backbone = nn.DataParallel(module=self.backbone)
+            self.confidence_net = nn.DataParallel(module=self.confidence_net)
             print('Use Multi GPU', self.device)
         elif torch.cuda.device_count() == 1 and args.use_gpu:
             self.device = torch.cuda.current_device()
             print("device is ", self.device)
             # sends the model from the cpu to the gpu
-            self.model.to(self.device)
-            self.meta_model.to(self.device)
+            self.backbone.to(self.device)
+            self.confidence_net.to(self.device)
             print('Use GPU', self.device)
         else:
             print("use CPU")
@@ -99,7 +100,7 @@ class ExperimentBuilder(nn.Module):
         return [-1*v for v in v3]
 
     def compute_batch_loss(self):
-        self.model.train()
+        self.backbone.train()
         inputs_x, targets_x = self.data_loader.get_labelled_batch()
         inputs_x, targets_x = inputs_x.to(self.device), targets_x.to(self.device)
 
@@ -110,7 +111,7 @@ class ExperimentBuilder(nn.Module):
         inputs = interleave(
             torch.cat((inputs_x, inputs_u_w, inputs_u_s)), 2*self.args.mu+1)
 
-        logits = self.model(inputs)
+        logits = self.backbone(inputs)
         logits = de_interleave(logits, 2*self.args.mu+1)
         logits_x = logits[:batch_size]
         logits_u_w, logits_u_s = logits[batch_size:].chunk(2)
@@ -125,7 +126,7 @@ class ExperimentBuilder(nn.Module):
 
         Lu = F.cross_entropy(logits_u_s, targets_u, reduction='none')
         
-        u_weight = self.meta_model(inputs_u_w)
+        u_weight = self.confidence_net(inputs_u_w)
 
         masked_lu = Lu * mask
         weighted_lu =  u_weight[:,0] * masked_lu
@@ -141,7 +142,7 @@ class ExperimentBuilder(nn.Module):
         for i in range(20):
             inputs = self.data_loader.val_data_x[0+(i*50):50+(i*50)].to(self.device)
             targets = self.data_loader.val_data_y[0+(i*50):50+(i*50)].to(self.device)
-            logits = self.model(inputs)
+            logits = self.backbone(inputs)
             losses.append(torch.nn.CrossEntropyLoss()(logits, targets))
             prec1_, prec5_ = accuracy(logits, targets, topk=(1,5))
             validation_accuracy.update(prec1_.item())
@@ -153,7 +154,7 @@ class ExperimentBuilder(nn.Module):
         self.confidence_net_weights.append(mwn_outputs_avg.item())
         self.confidence_net_stds.append(mwn_outputs_std.item())
 
-        self.model.zero_grad()
+        self.backbone.zero_grad()
         loss.backward()
         self.optimizer.step()
         self.scheduler.step()
@@ -167,7 +168,7 @@ class ExperimentBuilder(nn.Module):
     def pretrain_confidence_network(self):
         end = time.time()
         
-        meta_optimizer_pre = torch.optim.SGD(self.meta_model.parameters(), lr=self.args.hyper_lr, momentum=0.9, weight_decay=5e-4)
+        meta_optimizer_pre = torch.optim.SGD(self.confidence_net.parameters(), lr=self.args.hyper_lr, momentum=0.9, weight_decay=5e-4)
 
         for epoch in range(1):
             if self.args.progress:
@@ -175,16 +176,16 @@ class ExperimentBuilder(nn.Module):
             for step in range(self.args.pre_train_steps):
                 self.data_time.update(time.time() - end)
                 
-                self.meta_model.train()
+                self.confidence_net.train()
                 inputs_u, inputs_u_w, inputs_u_s = self.data_loader.get_unlabeled_batch()
                 inputs_x = inputs_u_w.to(self.device)
-                logits = self.meta_model(inputs_x)
+                logits = self.confidence_net(inputs_x)
                 targets = torch.ones(inputs_u_w.shape[0]).to(self.device)
                 Lx = torch.nn.MSELoss()(logits, targets)
 
                 self.pre_train_confidence_loss.update(Lx.item())
 
-                self.meta_model.zero_grad()
+                self.confidence_net.zero_grad()
                 Lx.backward()
                 meta_optimizer_pre.step()
 
@@ -203,11 +204,11 @@ class ExperimentBuilder(nn.Module):
 
                 if self.args.debugging:
                     self.writer.add_scalar('pre_train_confidence_net/1.train_loss', self.pre_train_confidence_loss.avg, step)
-            self.meta_model.eval()
+            self.confidence_net.eval()
 
     def pre_train(self):
         end = time.time()
-        self.model.train()
+        self.backbone.train()
 
         if self.args.pre_train:
             for epoch in range(self.args.pre_train_epochs):
@@ -256,10 +257,10 @@ class ExperimentBuilder(nn.Module):
         with torch.no_grad():
             batches = round(self.data_loader.test_data_x.shape[0]/batch_size)
             for i in range(batches):
-                self.model.eval()
+                self.backbone.eval()
                 inputs = self.data_loader.test_data_x[0+(i*batch_size):batch_size+(i*batch_size)].to(self.device)
                 targets = self.data_loader.test_data_y[0+(i*batch_size):batch_size+(i*batch_size)].to(self.device)
-                outputs = self.model(inputs)
+                outputs = self.backbone(inputs)
                 loss = torch.nn.CrossEntropyLoss()(outputs, targets)
 
                 prec1_, prec5_ = accuracy(outputs, targets, topk=(1,5))
@@ -272,18 +273,18 @@ class ExperimentBuilder(nn.Module):
 
     def meta_update(self):
         if not self.args.freeze_meta:
-            self.meta_model.train()
+            self.confidence_net.train()
             train_loss, Lx, weighted_lu, lu, mask, mwn_outputs_avg, mwn_outputs_std = self.compute_batch_loss()
             val_loss, val_acc = self.compute_val_loss()
             
-            hyper_grads = self.hypergradient(val_loss, train_loss, self.meta_model.parameters, self.model.parameters)
+            hyper_grads = self.hypergradient(val_loss, train_loss, self.confidence_net.parameters, self.backbone.parameters)
 
             self.meta_optimizer.zero_grad()
-            for p, g in zip(self.meta_model.parameters(), hyper_grads):
+            for p, g in zip(self.confidence_net.parameters(), hyper_grads):
                 p.grad = g
             self.meta_optimizer.step()
             self.meta_scheduler.step()
-            self.meta_model.eval()
+            self.confidence_net.eval()
 
             return val_loss, val_acc
         else:
@@ -296,8 +297,9 @@ class ExperimentBuilder(nn.Module):
             self.pretrain_confidence_network()
             save_checkpoint({
                     'epoch': "0",
-                    'model_dict': self.model.state_dict(),
-                    'meta_model_dict': self.meta_model.state_dict(),
+                    'backbone_dict': self.backbone.state_dict(),
+                    'classifier_dict': self.classifer_net.state_dict(),
+                    'confidence_dict': self.confidence_net.state_dict(),
                     'optimizer': self.optimizer.state_dict(),
                     'meta_optimizer': self.meta_optimizer.state_dict(),
                     'scheduler': self.scheduler.state_dict(),
@@ -309,8 +311,9 @@ class ExperimentBuilder(nn.Module):
             self.meta_update()
             save_checkpoint({
                 'epoch': "0",
-                'model_dict': self.model.state_dict(),
-                'meta_model_dict': self.meta_model.state_dict(),
+                'backbone_dict': self.backbone.state_dict(),
+                'classifier_dict': self.classifer_net.state_dict(),
+                'confidence_dict': self.confidence_net.state_dict(),
                 'optimizer': self.optimizer.state_dict(),
                 'meta_optimizer': self.meta_optimizer.state_dict(),
                 'scheduler': self.scheduler.state_dict(),
@@ -385,8 +388,9 @@ class ExperimentBuilder(nn.Module):
             # Save Checkpoint
             save_checkpoint({
                 'epoch': epoch + 1,
-                'model_dict': self.model.state_dict(),
-                'meta_model_dict': self.meta_model.state_dict(),
+                'backbone_dict': self.backbone.state_dict(),
+                'classifier_dict': self.classifer_net.state_dict(),
+                'confidence_dict': self.confidence_net.state_dict(),
                 'optimizer': self.optimizer.state_dict(),
                 'meta_optimizer': self.meta_optimizer.state_dict(),
                 'scheduler': self.scheduler.state_dict(),

@@ -48,8 +48,9 @@ def get_args():
     parser.add_argument('--approx', type=str, default='identity', choices=['numn', 'identity'], help='Inverse Hessian Approximation to Use (numn or identity)')
     parser.add_argument('--freeze_meta', type=bool, default=False, help='If True, The Confidence Network is fixed/Freezed (no meta-updates are executed).')
     parser.add_argument('--checkpoint', default='', type=str, help='File path of the checkpoint to load.')
-    parser.add_argument('--load_hypernet', type=bool, default=False, help='If true, the checkpoint is used to load the hypernet.')
-    parser.add_argument('--load_basenet', type=bool, default=False, help='If true, the checkpoint is used to load the hypernet.')
+    parser.add_argument('--load_hypernet', type=bool, default=False, help='If true, the checkpoint is used to load the hypernet (MLP weighting head - confidence network).')
+    parser.add_argument('--load_backbone', type=bool, default=False, help='If true, the checkpoint is used to load the backbone (feature extractor).')
+    parser.add_argument('--load_classifier', type=bool, default=False, help='If true, the checkpoint is used to load the classifier head (MLP classifier).')
 
                     
     args = parser.parse_args()

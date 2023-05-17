@@ -72,7 +72,7 @@ class NetworkBlock(nn.Module):
 
 
 class WideResNet(nn.Module):
-    def __init__(self, num_classes, depth=28, widen_factor=2, drop_rate=0.0):
+    def __init__(self, num_classes=10, depth=28, widen_factor=2, drop_rate=0.0, feature_extractor=False):
         super(WideResNet, self).__init__()
         channels = [16, 16*widen_factor, 32*widen_factor, 64*widen_factor]
         assert((depth - 4) % 6 == 0)
@@ -94,8 +94,9 @@ class WideResNet(nn.Module):
         self.bn1 = nn.BatchNorm2d(channels[3], momentum=0.001)
         self.relu = nn.LeakyReLU(negative_slope=0.1, inplace=True)
         self.pool = nn.AdaptiveAvgPool2d(1)
-        self.fc = nn.Linear(channels[3], num_classes)
         self.channels = channels[3]
+        if not feature_extractor:
+            self.fc = nn.Linear(channels[3], num_classes)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -121,9 +122,10 @@ class WideResNet(nn.Module):
         return out
 
 
-def build_wideresnet(depth, widen_factor, dropout, num_classes):
+def build_wideresnet(depth, widen_factor, dropout, num_classes=10, feature_extractor=False):
     logger.info(f"Model: WideResNet {depth}x{widen_factor}")
     return WideResNet(depth=depth,
                       widen_factor=widen_factor,
                       drop_rate=dropout,
-                      num_classes=num_classes)
+                      num_classes=num_classes,
+                      feature_extractor=feature_extractor)
