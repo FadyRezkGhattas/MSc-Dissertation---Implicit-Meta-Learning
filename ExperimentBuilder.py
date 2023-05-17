@@ -44,6 +44,7 @@ class ExperimentBuilder(nn.Module):
             self.device = torch.device('cpu')  # sets the device to be CPU
             print(self.device)
 
+        # Experiment Logging
         self.experiment_folder = os.path.abspath(self.experiment_name)
         wandb.init(
             project=args.wandb_project_name,
@@ -212,7 +213,7 @@ class ExperimentBuilder(nn.Module):
                 if self.args.progress:
                         p_bar.set_description("Train Epoch: {epoch}/{epochs:4}. Iter: {batch:4}/{iter:4}. Data: {data:.3f}s. Batch: {bt:.3f}s. Loss: {loss:.4f}. ".format(
                         epoch=epoch + 1,
-                        epochs=50,
+                        epochs=1,
                         batch=step + 1,
                         iter=self.args.pre_train_steps,
                         data=self.data_time.avg,
