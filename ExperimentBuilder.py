@@ -26,8 +26,10 @@ class ExperimentBuilder(nn.Module):
             self.device = torch.cuda.current_device()
             self.backbone.to(self.device)
             self.confidence_net.to(self.device)
+            self.classifer_net.to(self.device)
             self.backbone = nn.DataParallel(module=self.backbone)
             self.confidence_net = nn.DataParallel(module=self.confidence_net)
+            self.classifer_net = nn.DataParallel(module=self.classifer_net)
             print('Use Multi GPU', self.device)
         elif torch.cuda.device_count() == 1 and args.use_gpu:
             self.device = torch.cuda.current_device()
@@ -35,6 +37,7 @@ class ExperimentBuilder(nn.Module):
             # sends the model from the cpu to the gpu
             self.backbone.to(self.device)
             self.confidence_net.to(self.device)
+            self.classifer_net.to(self.device)
             print('Use GPU', self.device)
         else:
             print("use CPU")
@@ -88,7 +91,7 @@ class ExperimentBuilder(nn.Module):
         return p
 
     def hypergradient(self, validation_loss, training_loss, lambda_, w):
-        v1 = torch.autograd.grad(validation_loss, w(), retain_graph=True)
+        v1 = torch.autograd.grad(validation_loss, w(), retain_graph=True, allow_unused=True)
         d_train_d_w = torch.autograd.grad(training_loss, w(), create_graph=True)
         if self.args.approx == "numn":
             v2 = self.neummann_approximation(v1, d_train_d_w, w, i=self.args.num_neumann_terms)
@@ -101,6 +104,7 @@ class ExperimentBuilder(nn.Module):
 
     def compute_batch_loss(self):
         self.backbone.train()
+        self.classifer_net.train()
         inputs_x, targets_x = self.data_loader.get_labelled_batch()
         inputs_x, targets_x = inputs_x.to(self.device), targets_x.to(self.device)
 
@@ -111,7 +115,8 @@ class ExperimentBuilder(nn.Module):
         inputs = interleave(
             torch.cat((inputs_x, inputs_u_w, inputs_u_s)), 2*self.args.mu+1)
 
-        logits = self.backbone(inputs)
+        features = self.backbone(inputs)
+        logits = self.classifer_net(features)
         logits = de_interleave(logits, 2*self.args.mu+1)
         logits_x = logits[:batch_size]
         logits_u_w, logits_u_s = logits[batch_size:].chunk(2)
@@ -126,7 +131,9 @@ class ExperimentBuilder(nn.Module):
 
         Lu = F.cross_entropy(logits_u_s, targets_u, reduction='none')
         
-        u_weight = self.confidence_net(inputs_u_w)
+        with torch.no_grad():
+            features = self.backbone(inputs_u_w)
+        u_weight = self.confidence_net(features)
 
         masked_lu = Lu * mask
         weighted_lu =  u_weight[:,0] * masked_lu
@@ -142,7 +149,9 @@ class ExperimentBuilder(nn.Module):
         for i in range(20):
             inputs = self.data_loader.val_data_x[0+(i*50):50+(i*50)].to(self.device)
             targets = self.data_loader.val_data_y[0+(i*50):50+(i*50)].to(self.device)
-            logits = self.backbone(inputs)
+            with torch.no_grad():
+                features = self.backbone(inputs)
+            logits = self.classifer_net(features)
             losses.append(torch.nn.CrossEntropyLoss()(logits, targets))
             prec1_, prec5_ = accuracy(logits, targets, topk=(1,5))
             validation_accuracy.update(prec1_.item())
@@ -179,7 +188,9 @@ class ExperimentBuilder(nn.Module):
                 self.confidence_net.train()
                 inputs_u, inputs_u_w, inputs_u_s = self.data_loader.get_unlabeled_batch()
                 inputs_x = inputs_u_w.to(self.device)
-                logits = self.confidence_net(inputs_x)
+                with torch.no_grad():
+                    features = self.backbone(inputs_x)
+                logits = self.confidence_net(features)
                 targets = torch.ones(inputs_u_w.shape[0]).to(self.device)
                 Lx = torch.nn.MSELoss()(logits, targets)
 
