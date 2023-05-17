@@ -106,7 +106,7 @@ def get_svhn(args, root="data"):
         root, train_unlabeled_idxs, train=True,
         transform=TransformFixMatch(mean=cifar10_mean, std=cifar10_std))
 
-    validation_labeled_dataset = CIFAR10SSL(
+    validation_labeled_dataset = SVHN_SSL(
         root, validation_idx, train=True,
         transform=transform_labeled)
 
