@@ -91,8 +91,8 @@ class ExperimentBuilder(nn.Module):
         return p
 
     def hypergradient(self, validation_loss, training_loss, lambda_, w):
-        v1 = torch.autograd.grad(validation_loss, w(), retain_graph=True, allow_unused=True)
-        d_train_d_w = torch.autograd.grad(training_loss, w(), create_graph=True)
+        v1 = torch.autograd.grad(validation_loss, w, retain_graph=True)
+        d_train_d_w = torch.autograd.grad(training_loss, w, create_graph=True)
         if self.args.approx == "numn":
             v2 = self.neummann_approximation(v1, d_train_d_w, w, i=self.args.num_neumann_terms)
         elif self.args.approx == "identity":
@@ -149,8 +149,7 @@ class ExperimentBuilder(nn.Module):
         for i in range(20):
             inputs = self.data_loader.val_data_x[0+(i*50):50+(i*50)].to(self.device)
             targets = self.data_loader.val_data_y[0+(i*50):50+(i*50)].to(self.device)
-            with torch.no_grad():
-                features = self.backbone(inputs)
+            features = self.backbone(inputs)
             logits = self.classifer_net(features)
             losses.append(torch.nn.CrossEntropyLoss()(logits, targets))
             prec1_, prec5_ = accuracy(logits, targets, topk=(1,5))
@@ -288,7 +287,10 @@ class ExperimentBuilder(nn.Module):
             train_loss, Lx, weighted_lu, lu, mask, mwn_outputs_avg, mwn_outputs_std = self.compute_batch_loss()
             val_loss, val_acc = self.compute_val_loss()
             
-            hyper_grads = self.hypergradient(val_loss, train_loss, self.confidence_net.parameters, self.backbone.parameters)
+            # Create base params
+            base_params = list(self.backbone.parameters()) + list(self.classifer_net.parameters())
+
+            hyper_grads = self.hypergradient(val_loss, train_loss, self.confidence_net.parameters, base_params)
 
             self.meta_optimizer.zero_grad()
             for p, g in zip(self.confidence_net.parameters(), hyper_grads):
