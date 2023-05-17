@@ -48,16 +48,16 @@ class DataLoaderWrap():
     
     def get_labelled_batch(self):
         try:
-            inputs_x, targets_x = self.labeled_iter.next()
+            inputs_x, targets_x = next(self.labeled_iter)
         except:
             self.labeled_iter = iter(self.labeled_trainloader)
-            inputs_x, targets_x = self.labeled_iter.next()
+            inputs_x, targets_x = next(self.labeled_iter)
         return inputs_x, targets_x
     
     def get_unlabeled_batch(self):
         try:
-            (inputs_u, inputs_u_w, inputs_u_s), _ = self.unlabeled_iter.next()
+            (inputs_u, inputs_u_w, inputs_u_s), _ = next(self.unlabeled_iter)
         except:
                 self.unlabeled_iter = iter(self.unlabeled_trainloader)
-                (inputs_u, inputs_u_w, inputs_u_s), _ = self.unlabeled_iter.next()
+                (inputs_u, inputs_u_w, inputs_u_s), _ = next(self.unlabeled_iter)
         return inputs_u, inputs_u_w, inputs_u_s
