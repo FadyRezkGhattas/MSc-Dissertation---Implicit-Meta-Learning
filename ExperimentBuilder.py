@@ -51,6 +51,9 @@ class ExperimentBuilder(nn.Module):
             config=vars(args),
             name=self.experiment_name
         )
+        wandb.watch(self.backbone, log="all", log_freq=100)
+        wandb.watch(self.confidence_net, log_freq=100)
+        wandb.watch(self.classifer_net, log_freq=100)
         self.experiment_saved_models = os.path.abspath(
             os.path.join(self.experiment_folder, "saved_models"))
         # If experiment directory does not exist
