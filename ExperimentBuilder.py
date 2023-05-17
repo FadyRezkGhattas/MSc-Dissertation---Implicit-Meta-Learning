@@ -6,7 +6,7 @@ from util.experiment_util import AverageMeter, interleave, de_interleave, accura
 import time
 import os
 from tqdm import tqdm
-from torch.utils.tensorboard import SummaryWriter
+import wandb
 
 class ExperimentBuilder(nn.Module):
     def __init__(self, backbone, classifier_net, confidence_net, optimizer, scheduler, meta_optimizer, meta_scheduler, args, experiment_name, data_loader : DataLoaderWrap) -> None:
@@ -45,7 +45,12 @@ class ExperimentBuilder(nn.Module):
             print(self.device)
 
         self.experiment_folder = os.path.abspath(self.experiment_name)
-        self.writer = SummaryWriter(self.experiment_folder)
+        wandb.init(
+            project=args.wandb_project_name,
+            entity=args.wandb_entity,
+            config=vars(args),
+            name=self.experiment_name
+        )
         self.experiment_saved_models = os.path.abspath(
             os.path.join(self.experiment_folder, "saved_models"))
         # If experiment directory does not exist
@@ -213,7 +218,7 @@ class ExperimentBuilder(nn.Module):
                 p_bar.update()
 
                 if self.args.debugging:
-                    self.writer.add_scalar('pre_train_confidence_net/1.train_loss', self.pre_train_confidence_loss.avg, step)
+                    wandb.log({'pre_train_confidence_net/1.train_loss': self.pre_train_confidence_loss.avg}, step)
             self.confidence_net.eval()
 
     def pre_train(self):
@@ -245,10 +250,13 @@ class ExperimentBuilder(nn.Module):
                         mask=self.mask_probs.avg))
                     p_bar.update()
                     if self.args.debugging:
-                        self.writer.add_scalar('pre_train_epoch'+str(epoch)+'/1.train_loss', self.losses.avg, step)
-                        self.writer.add_scalar('pre_train_epoch'+str(epoch)+'/2.train_loss_x', self.losses_x.avg, step)
-                        self.writer.add_scalar('pre_train_epoch'+str(epoch)+'/3.train_loss_u', self.losses_u.avg, step)
-                        self.writer.add_scalar('pre_train_epoch'+str(epoch)+'/4.mask', self.mask_probs.avg, step)
+                        metrics = {
+                            'pre_train_epoch'+str(epoch)+'/1.train_loss': self.losses.avg,
+                            'pre_train_epoch'+str(epoch)+'/2.train_loss_x': self.losses_x.avg,
+                            'pre_train_epoch'+str(epoch)+'/3.train_loss_u': self.losses_u.avg,
+                            'pre_train_epoch'+str(epoch)+'/4.mask': self.mask_probs.avg
+                        }
+                        wandb.log(metrics, step)
 
 
                 if self.args.progress:
@@ -370,13 +378,15 @@ class ExperimentBuilder(nn.Module):
                         mask=self.mask_probs.avg))
                 p_bar.update()
                 if self.args.debugging:
-                    self.writer.add_scalar('train_epoch'+str(epoch)+'/1.train_loss', self.losses.val, step)
-                    self.writer.add_scalar('train_epoch'+str(epoch)+'/2.train_loss_x', self.losses_x.val, step)
-                    self.writer.add_scalar('train_epoch'+str(epoch)+'/3.train_loss_u', self.losses_u.val, step)
-                    self.writer.add_scalar('train_epoch'+str(epoch)+'/4.train_loss_u_weighted', self.losses_u_weighted.val, step)
-                    self.writer.add_scalar('train_epoch'+str(epoch)+'/5.mask', self.mask_probs.val, step)
-                    self.writer.add_scalar('train_epoch'+str(epoch)+'/6.MWN_Outputs_Avg', self.confidence_net_weights[-1], step)
-                    self.writer.add_scalar('train_epoch'+str(epoch)+'/7.MWN_Outputs_Std', self.confidence_net_stds[-1], step)
+                    metrics = {
+                        'train_epoch'+str(epoch)+'/1.train_loss': self.losses.val,
+                        'train_epoch'+str(epoch)+'/2.train_loss_x': self.losses_x.val,
+                        'train_epoch'+str(epoch)+'/3.train_loss_u': self.losses_u.val,
+                        'train_epoch'+str(epoch)+'/4.train_loss_u_weighted': self.losses_u_weighted.val,
+                        'train_epoch'+str(epoch)+'/5.mask': self.mask_probs.val,
+                        'train_epoch'+str(epoch)+'/6.MWN_Outputs_Avg': self.confidence_net_weights[-1]
+                    }
+                    wandb.log(metrics, step=step)
             if self.args.progress:
                     p_bar.close()
             ####################################
@@ -390,13 +400,16 @@ class ExperimentBuilder(nn.Module):
             ####################################
             # Summary Writer
             ####################################
-            self.writer.add_scalar('train/1.train_loss', self.losses.avg, epoch)
-            self.writer.add_scalar('train/2.train_loss_x', self.losses_x.avg, epoch)
-            self.writer.add_scalar('train/3.train_loss_u', self.losses_u.avg, epoch)
-            self.writer.add_scalar('train/4.train_loss_u_weighted', self.losses_u_weighted.avg, epoch)
-            self.writer.add_scalar('train/4.mask', self.mask_probs.avg, epoch)
-            self.writer.add_scalar('test/1.val_loss', val_loss, epoch)
-            self.writer.add_scalar('test/2.val_accuracy', val_acc, epoch)
+            metrics = {
+                'train/1.train_loss': self.losses.avg,
+                'train/2.train_loss_x': self.losses_x.avg,
+                'train/3.train_loss_u': self.losses_u.avg,
+                'train/4.train_loss_u_weighted': self.losses_u_weighted.avg,
+                'train/5.mask': self.mask_probs.avg,
+                'test/1.val_loss': val_loss,
+                'test/2.val_accuracy': val_acc
+            }
+            wandb.log(metrics, step=epoch)
             
             # Save Checkpoint
             save_checkpoint({

@@ -51,7 +51,8 @@ def get_args():
     parser.add_argument('--load_hypernet', type=bool, default=False, help='If true, the checkpoint is used to load the hypernet (MLP weighting head - confidence network).')
     parser.add_argument('--load_backbone', type=bool, default=False, help='If true, the checkpoint is used to load the backbone (feature extractor).')
     parser.add_argument('--load_classifier', type=bool, default=False, help='If true, the checkpoint is used to load the classifier head (MLP classifier).')
-
+    parser.add_argument("--wandb-project-name", type=str, default="confidence_net", help="the wandb's project name")
+    parser.add_argument("--wandb-entity", type=str, default="fastautomate", help="the entity (team) of wandb's project")
                     
     args = parser.parse_args()
     print(args)
